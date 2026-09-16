@@ -1,0 +1,157 @@
+# Week 2 Data Analysis — Pop Culture Clothing Website (Capstone B)
+
+**Team:** Amit Pandey, Sujal, Manish, Asok, Manoj, Nabin
+**Scope:** Capstone A frontend MVP (product catalogue, contact form, admin portal) + Capstone B backend roadmap (Node.js/Express, real database, authentication, orders).
+
+---
+
+## Activity 1: Module Data Discovery
+
+### Product Catalogue
+- Product Name
+- Product Description
+- Product Price
+- Product Category
+- Product Stock Level
+- Product Image
+- Product SKU / ID
+
+### Customer & Contact
+- Customer Name
+- Customer Email
+- Contact / Enquiry Message
+
+### User Management & Authentication (Capstone B)
+- Customer Username
+- Customer Password (hashed)
+- User Role (customer / admin)
+- Session / Authentication Token
+
+### Shopping Cart & Order Processing (Capstone B)
+- Cart Items (Product ID + Quantity)
+- Cart Total
+- Order Number
+- Payment Status
+- Shipping Address
+- Order Tracking / Delivery Status
+
+### Admin Dashboard
+- Admin Dashboard Stats (Total Orders, Active Users, Revenue)
+
+**Total: 21 data items**, spanning what's already built in the Capstone A MVP and what's introduced by the Capstone B backend roadmap.
+
+---
+
+## Activity 2: Project Data Inventory
+
+| Data Item | Purpose | Who Creates It? | Who Uses It? | Required? |
+|---|---|---|---|---|
+| Product Name | Identifies the product to customers | Admin (Product Management) | Customers, Catalogue Page | Yes |
+| Product Description | Gives customers detail to inform purchase decisions | Admin | Customers | Yes |
+| Product Price | Determines cost charged to customer | Admin | Customers, Cart, Checkout | Yes |
+| Product Category | Enables filtering and navigation | Admin | Customers (filter/search), Nav Menu | Yes |
+| Product Stock Level | Tracks how many units are available | Admin / Inventory System | Admin, Cart validation, Checkout | Yes |
+| Product Image | Visually represents the product | Admin (upload) | Customers | Yes |
+| Product SKU / ID | Uniquely identifies a product record | System (auto-generated) | Database, Cart, Order, Admin | Yes |
+| Customer Name | Identifies who is enquiring or ordering | Customer (form entry) | Admin/Support, Order records | Yes |
+| Customer Email | Enables contact and order confirmation | Customer (form entry) | Admin/Support, Notification system | Yes |
+| Contact/Enquiry Message | Captures a customer's question or request | Customer (contact form) | Admin/Support staff | Yes |
+| Customer Username | Identifies a registered account | Customer (registration) | Auth Service, Customer | Yes (if account created) |
+| Customer Password (hashed) | Authenticates account login | Customer (registration) | Auth Service only | Yes (if account created) |
+| User Role | Distinguishes customer vs admin/staff permissions | System (assigned at creation) | Auth/Authorisation Service | Yes |
+| Session / Auth Token | Keeps a user logged in securely between requests | Auth Service (on login) | Backend services validating requests | Yes |
+| Cart Items (Product ID + Qty) | Holds what a customer intends to purchase | Customer (adds to cart) | Cart Service, Checkout | Yes – Capstone B |
+| Cart Total | Shows running cost before checkout | System (calculated) | Customer, Checkout | Yes – Capstone B |
+| Order Number | Uniquely identifies a completed order | System (on checkout) | Customer, Admin, Order Tracking | Yes – Capstone B |
+| Payment Status | Shows whether an order has been paid | Payment Gateway | Admin, Customer, Order Tracking | Yes – Capstone B |
+| Shipping Address | Tells the business where to deliver an order | Customer (checkout form) | Admin/Fulfilment, Courier | Yes – Capstone B |
+| Order Tracking / Delivery Status | Lets the customer follow their order's progress | System / Courier updates | Customer, Admin | Yes – Capstone B |
+| Admin Dashboard Stats (orders, revenue, users) | Gives the business an overview of performance | System (aggregated) | Admin/Owner | No – nice-to-have |
+
+---
+
+## Activity 3: Data Flow Investigation
+
+### Customer Purchase Flow
+```
+Customer
+   ↓
+Browse Product Catalogue (filter/search by category)
+   ↓
+View Product Detail Page
+   ↓
+Add to Shopping Cart
+   ↓
+Checkout (Shipping Address + Payment)
+   ↓
+Order Processing (Order Number, Payment Status created)
+   ↓
+Database (Order + Customer + Product records linked)
+   ↓
+Order Tracking (Delivery Status updates to Customer)
+```
+
+### Admin Product Management Flow
+```
+Admin
+   ↓
+Login (Username + Password → Auth Token)
+   ↓
+Admin Portal / Dashboard
+   ↓
+Manage Product (Add / Edit Stock, Price, Category)
+   ↓
+Database (Product record updated)
+   ↓
+Reflected Live on Customer-Facing Catalogue
+```
+
+---
+
+## Activity 4: Data Quality and Risk Analysis
+
+| Data Item | Risk | Business Impact | Prevention Strategy |
+|---|---|---|---|
+| Product Price | Incorrect value entered by admin | Customers over/undercharged; refund disputes and lost trust | Input validation (numeric, min/max), confirmation step before publishing price changes |
+| Product Stock Level | Not decremented after a sale, or entered incorrectly | Overselling out-of-stock items; customer complaints and refunds | Real-time stock decrement on order confirmation; low-stock alerts for admin |
+| Customer Email | Mistyped or invalid on contact/registration form | Enquiry responses and order confirmations never reach the customer | Email format validation on submit; confirmation email with retry prompt |
+| Customer Password | Stored in plain text or with weak hashing | Full account compromise if the database is breached | Hash with bcrypt/argon2, salted; never log or display raw passwords |
+| Cart Total | Miscalculated due to rounding or promo-code bugs | Financial loss to the business or customer disputes at checkout | Server-side recalculation before payment is charged; automated unit tests for pricing logic |
+| Product Category | Missing or inconsistent category assigned | Products become undiscoverable, reducing sales through filters/nav | Mandatory field with a fixed dropdown list rather than free text |
+| User Role | Assigned incorrectly (e.g. customer given admin rights) | Unauthorised access to admin product/order management | Role-based access control; only existing admins can grant admin role |
+| Shipping Address | Incomplete or incorrect address entered at checkout | Failed deliveries, reshipping cost, and customer dissatisfaction | Address validation/autocomplete; required-field checks before order submission |
+| Session / Auth Token | Token does not expire or is stored insecurely (e.g. localStorage) | Session hijacking or account takeover | Short expiry, HttpOnly secure cookies, HTTPS enforced site-wide |
+| Payment Status | Not updated promptly after a successful payment | Customer confusion, support overload, possible duplicate charges | Automated status update via payment gateway webhook rather than manual entry |
+| Contact/Enquiry Message | No spam or input validation on the form | Wasted staff time on spam; genuine enquiries missed or delayed | Basic input sanitisation, simple bot-check (e.g. honeypot field or CAPTCHA) |
+
+---
+
+## Activity 5: Planning for Future Development
+
+**What information should be stored permanently?**
+Product records (name, description, SKU history), completed order records and payment status, and customer accounts should be retained permanently for record-keeping, customer support and financial/tax reporting, even after an order is fulfilled.
+
+**What information changes frequently?**
+Stock levels, product pricing/promotions, cart contents and order/delivery status change frequently — stock and cart data in particular can change within seconds during checkout, so these need real-time updates rather than cached values.
+
+**What information should be restricted to administrators?**
+Revenue and sales statistics, full customer lists, other customers' order details, and the ability to edit stock/price/category should be restricted to the admin role only, enforced through role-based access control rather than hiding buttons in the UI.
+
+**What information should be included in future reports?**
+Reports should include total orders and revenue over time, best-selling products and categories, low-stock alerts, and enquiry volume/response times — giving the client visibility into both sales performance and customer service quality.
+
+**What information might be required in Capstone B Version 2?**
+Version 2 could require customer order history and wishlists, product reviews/ratings, discount/promotion codes, multiple shipping addresses per customer, and refund/return records — all of which should be considered now so the Capstone B database schema can accommodate them without a costly redesign.
+
+---
+
+## GitHub Data Management Plan
+
+Following professional Agile practice, the team will manage this week's data requirements using GitHub alongside Jira, consistent with the branch → pull request → review → merge workflow already established in Capstone A.
+
+- Create a `/docs` folder in the project repository.
+- Create `/docs/week2-data-analysis.md` (this file) containing the Data Inventory (Activity 2), the Data Flow Diagram (Activity 3) and the Data Risk Analysis (Activity 4).
+- Commit changes regularly with clear messages (e.g. `docs: add initial data inventory table`, `docs: add risk analysis for cart and checkout data`) rather than one large commit.
+- Open a Pull Request for team review before merging into the main branch, following the same PR process used for the Capstone A frontend build.
+- Record reviewer comments directly on the Pull Request and make follow-up commits to address them, keeping a visible history of improvements.
+- Cross-reference the corresponding Jira ticket in the PR description so the documentation work is traceable to the sprint board.
