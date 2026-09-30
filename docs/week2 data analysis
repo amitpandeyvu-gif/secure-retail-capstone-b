@@ -147,11 +147,4 @@ Version 2 could require customer order history and wishlists, product reviews/ra
 
 ## GitHub Data Management Plan
 
-Following professional Agile practice, the team will manage this week's data requirements using GitHub alongside Jira, consistent with the branch → pull request → review → merge workflow already established in Capstone A.
 
-- Create a `/docs` folder in the project repository.
-- Create `/docs/week2-data-analysis.md` (this file) containing the Data Inventory (Activity 2), the Data Flow Diagram (Activity 3) and the Data Risk Analysis (Activity 4).
-- Commit changes regularly with clear messages (e.g. `docs: add initial data inventory table`, `docs: add risk analysis for cart and checkout data`) rather than one large commit.
-- Open a Pull Request for team review before merging into the main branch, following the same PR process used for the Capstone A frontend build.
-- Record reviewer comments directly on the Pull Request and make follow-up commits to address them, keeping a visible history of improvements.
-- Cross-reference the corresponding Jira ticket in the PR description so the documentation work is traceable to the sprint board.
