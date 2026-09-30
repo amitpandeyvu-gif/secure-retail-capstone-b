@@ -1,1 +1,48 @@
-Comparing our Week 2 inventory (21 items) with the industry systems showed that we had covered the core product, account, cart and order data but were missing data that customers rely on to make and trust a purchase. The main new data items were size and colour variants, size guides, reviews and ratings, estimated delivery date, shipping cost, return and refund policy, promo codes, order history and tracking number with courier. For the front end, each of these needs a place in the interface: a size and colour selector and size guide on the product page, delivery and returns information near the price, promo code entry in the cart, and an order history and tracking view for logged-in customers. Our risk analysis showed that price, stock and cart total need server-side validation, so the front end will display these values but never be the source of truth. For the Week 4 database design, we will add tables or fields for variants, reviews, promo_codes, order_history and tracking_number. Admin-only data such as revenue and customer lists will be protected with role-based access control. Best-selling products and low-stock alerts were identified as useful dashboard reports.
+# Gap Analysis and Data Discovery Findings
+
+Pop Culture Clothing Website, Capstone B, Sprint 1
+Prepared by: Capstone B project team
+
+## Summary
+
+Comparing our Week 2 inventory (21 items) with the industry systems
+(Amazon, Kmart Online and Cotton On) showed that we had covered the core
+product, account, cart and order data. However, we were missing data that
+customers rely on to make and trust a purchase.
+
+## Missing data items
+
+| New data item | Why customers need it | Where it is used |
+|---|---|---|
+| Size and colour variants | Lets customers choose the right option and see availability | Product page |
+| Size guides | Helps customers pick the correct size | Product page |
+| Reviews and ratings | Builds trust in the product | Product page |
+| Estimated delivery date | Sets clear delivery expectations | Product page and checkout |
+| Shipping cost | Shows the total price before payment | Cart and checkout |
+| Return and refund policy | Reduces uncertainty before buying | Product page and checkout |
+| Promo codes | Lets customers apply discounts | Cart |
+| Order history | Lets customers review past orders | Customer account |
+| Tracking number with courier | Lets customers follow their delivery | Customer account and order details |
+
+## Risk and validation
+
+Our risk analysis showed that price, stock and cart total need server-side
+validation. Industry sites reinforce this by showing live stock and delivery
+information.
+
+## Inputs for the Week 4 database design
+
+We will add tables or fields for:
+
+- `variants`
+- `reviews`
+- `promo_codes`
+- `order_history`
+- `tracking_number`
+
+## Access control and reporting
+
+- Admin-only data such as revenue and customer lists will be protected with
+  role-based access control.
+- Best-selling products and low-stock alerts were identified as useful
+  dashboard reports.
