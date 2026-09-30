@@ -1,0 +1,64 @@
+# User Research Summary (3 Participants)
+
+Pop Culture Clothing Website, Capstone B, Sprint 1
+Prepared by: Capstone B project team
+
+## Overview
+
+Our team interviewed three participants with different shopping habits: a
+frequent shopper, a light shopper and a fan merchandise buyer. The summaries
+below are followed by what the findings mean for the project.
+
+## Participant 1: Amit Pandey (frequent shopper)
+
+- **Shopping habits:** Buys clothes online about twice a month, mainly from
+  ASOS and Cotton On, usually on his phone.
+- **Expects before buying:** A clear size guide, several photos including
+  on-model shots, and the total price including shipping.
+- **Trusts:** Verified reviews with photos, a visible returns policy and
+  secure payment options such as PayPal.
+- **Saves him time:** Filters, saved addresses and guest checkout.
+- **Common gaps:** Inaccurate delivery dates and no real-time stock for his
+  size.
+- **Would like:** An "in stock in my size" alert and easier returns labels.
+
+## Participant 2: Asok (light shopper)
+
+- **Shopping habits:** Shops online a few times a year, only for a specific
+  item, and prefers buying in store.
+- **Expects before buying:** An accurate description, material details and a
+  clear price.
+- **Trusts:** A recognisable brand, visible contact details and a
+  straightforward returns policy.
+- **Saves him time:** A simple search bar and not being forced to create an
+  account.
+- **Common gaps:** Fabric and fit information, such as whether an item runs
+  small, is often missing.
+- **Would like:** Fewer pop-ups and a clear way to contact someone when there
+  is a problem.
+
+## Participant 3: Nabin (fan merchandise buyer)
+
+- **Shopping habits:** Buys graphic tees and fandom merchandise roughly
+  monthly, often during sales and limited drops.
+- **Expects before buying:** Licensing or authenticity information,
+  limited-edition stock counts and photos that show print quality.
+- **Trusts:** Customer photos, order confirmation emails and a tracking link
+  after purchase.
+- **Saves him time:** Sorting by newest and price, plus a wishlist.
+- **Common gaps:** Restock notifications and pre-order shipping dates.
+- **Would like:** Wishlist and back-in-stock alerts.
+
+## Key findings and implications for the project
+
+| Finding | Raised by | Implication |
+|---|---|---|
+| Size guide and fabric/fit details | Amit, Asok | Add size guide and product detail fields |
+| Total price including shipping shown early | Amit | Show shipping cost and delivery estimate before payment |
+| Guest checkout | Amit, Asok | Allow orders without an account |
+| Real-time stock and back-in-stock alerts | Amit, Nabin | Track stock per variant and add alerts in Version 2 |
+| Wishlist | Nabin | Add wishlist feature in Version 2 |
+| Search, sorting and filters | Amit, Asok, Nabin | Add search bar, sorting and filters to the catalogue |
+| Visible returns policy and contact details | Amit, Asok | Make returns and contact information easy to find |
+| Order confirmation and tracking link | Nabin | Store tracking number and courier for each order |
+| Fewer pop-ups | Asok | Keep pop-ups to a minimum |
