@@ -1,0 +1,7 @@
+## Summary of Findings
+
+Across all three systems, I found the same pattern: size or variant options, stock availability, delivery cost and estimates, and returns information are shown to the customer before checkout, and order history and tracking are available after purchase.
+
+From a front-end view, Cotton On shows size options, colour options and availability directly on the product page and displays the delivery charge in the cart, while Kmart Online shows stock information for each item.
+
+Our MVP shows only basic product details and a contact form, so these are the main gaps I will need to address in the interface.
