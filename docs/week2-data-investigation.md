@@ -1,0 +1,22 @@
+# Project Data Investigation (10 Key Data Items)
+
+Pop Culture Clothing Website, Capstone B, Sprint 1
+Author: Sujal Shrestha (Front-End Developer)
+
+| Data Item | Purpose | Creator | User | Importance |
+|---|---|---|---|---|
+| Product Price | Sets the cost charged to the customer | Admin | Customers, Cart, Checkout | High: errors cause refund disputes |
+| Product Stock Level | Shows units available | Admin / Inventory system | Admin, Cart, Checkout | High: prevents overselling |
+| Product Category | Enables filtering and navigation | Admin | Customers | Medium: uncategorised products become hard to find |
+| Product SKU / ID | Uniquely identifies a product record | System (auto-generated) | Database, Cart, Orders, Admin | High: links products to orders |
+| Customer Email | Contact and order confirmation | Customer | Admin/Support, Notifications | High: failed emails lose the customer |
+| Password (hashed) | Authenticates login | Customer | Auth service only | High: a breach means full account compromise |
+| User Role | Separates customer and admin permissions | System | Auth/Authorisation service | High: prevents unauthorised admin access |
+| Cart Items and Total | Holds intended purchase and running cost | Customer / System | Cart service, Checkout | High: miscalculation causes financial loss |
+| Payment Status | Shows whether an order is paid | Payment gateway | Admin, Customer, Tracking | High: avoids duplicate charges and confusion |
+| Delivery Status | Lets customers follow an order | System / Courier | Customer, Admin | Medium: reduces support enquiries |
+
+## Front-end note
+
+Price, stock and cart total are displayed by the front end but must be
+validated on the server, so the front end is never the source of truth.
