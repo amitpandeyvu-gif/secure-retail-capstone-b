@@ -7,7 +7,8 @@ This repository contains the final full-stack Pop Culture Clothing website. It c
 - Responsive customer storefront, product catalogue, search and filters
 - Product details, wishlist, cart and checkout prototype
 - Customer and administrator sign-in flows
-- Administrator dashboard for products, categories, orders, customers and inventory
+- Administrator dashboard with database-backed product CRUD operations
+- Categories, orders, customers, inventory, promotions, reviews and analytics views
 - Express API backed by SQLite
 - Production server that serves both the API and the compiled frontend
 - Built-in catalogue fallback if the API is temporarily unavailable
@@ -49,6 +50,10 @@ Open `http://localhost:3000`. Express serves the compiled website and API from t
 |---|---|---|
 | GET | `/api/health` | Server and database health |
 | GET | `/api/products` | Products with category, sizes and colours |
+| GET | `/api/products/:id` | One product by ID |
+| POST | `/api/products` | Create a validated product and its variants |
+| PUT | `/api/products/:id` | Update a product and its variants |
+| DELETE | `/api/products/:id` | Delete an unused product |
 | GET | `/api/categories` | Product categories |
 
 ## Demo accounts
@@ -78,3 +83,11 @@ Run the complete syntax and production-build check:
 ```powershell
 npm run check
 ```
+
+Run the complete build and automated CRUD integration test:
+
+```powershell
+npm test
+```
+
+The automated test creates a temporary product, reads it, updates it, deletes it, verifies the deleted record returns HTTP 404, and confirms invalid data returns HTTP 400.

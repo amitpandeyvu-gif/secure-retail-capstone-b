@@ -2737,11 +2737,52 @@ export default function App() {
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleProductsChange = (nextProducts: Product[]) => {
+  const handleProductsChange = async (nextProducts: Product[]) => {
+    const previousProducts = products;
     setProducts(nextProducts);
     setSelectedProduct(prev => nextProducts.find(p => p.id === prev.id) || nextProducts[0] || PRODUCTS[0]);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("amit-pandey-products", JSON.stringify(nextProducts));
+
+    try {
+      const removedProduct = previousProducts.find(product => !nextProducts.some(next => next.id === product.id));
+      const addedProduct = nextProducts.find(product => !previousProducts.some(previous => previous.id === product.id));
+      const changedProduct = nextProducts.find(product => {
+        const previous = previousProducts.find(item => item.id === product.id);
+        return previous && JSON.stringify(previous) !== JSON.stringify(product);
+      });
+
+      let response: Response;
+      if (removedProduct) {
+        response = await fetch(`/api/products/${removedProduct.id}`, { method: "DELETE" });
+      } else if (addedProduct) {
+        response = await fetch("/api/products", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(addedProduct),
+        });
+      } else if (changedProduct) {
+        response = await fetch(`/api/products/${changedProduct.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(changedProduct),
+        });
+      } else {
+        return;
+      }
+
+      if (!response.ok) {
+        const failure = await response.json().catch(() => ({ error: "Product change failed" }));
+        throw new Error(failure.details?.join(". ") || failure.error || "Product change failed");
+      }
+
+      const refreshed = await fetch("/api/products");
+      if (!refreshed.ok) throw new Error("The product changed, but the catalogue could not refresh");
+      const persistedProducts: Product[] = await refreshed.json();
+      setProducts(persistedProducts);
+      setSelectedProduct(prev => persistedProducts.find(product => product.id === prev.id) || persistedProducts[0] || PRODUCTS[0]);
+    } catch (error) {
+      setProducts(previousProducts);
+      setSelectedProduct(prev => previousProducts.find(product => product.id === prev.id) || previousProducts[0] || PRODUCTS[0]);
+      window.alert(error instanceof Error ? error.message : "Unable to save the product change");
     }
   };
 

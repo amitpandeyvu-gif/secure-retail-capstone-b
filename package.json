@@ -10,7 +10,9 @@
     "dev:api": "node backend/server.cjs",
     "build": "vite build",
     "start": "node backend/server.cjs",
-    "check": "node --check backend/server.cjs && npm run build"
+    "check": "node --check backend/server.cjs && npm run build",
+    "test:api": "node tests/api-crud-test.mjs",
+    "test": "npm run check && npm run test:api"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
