@@ -1,6 +1,6 @@
 import { openDatabase } from '../src/database.js';
 const db = openDatabase();
-for (const table of ['categories', 'products', 'variants', 'users', 'orders', 'order_items', 'order_status_history']) {
+for (const table of ['categories', 'products', 'variants', 'users', 'carts', 'cart_items', 'orders', 'order_items', 'order_status_history', 'payments', 'contact_messages']) {
   console.log(`\n${table.toUpperCase()}`);
   console.table(db.prepare(`SELECT * FROM ${table} ORDER BY id`).all());
 }

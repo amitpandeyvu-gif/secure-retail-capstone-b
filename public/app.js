@@ -181,9 +181,47 @@ function addActiveProductToCart() {
   toast('Added to your bag');
 }
 
-function saveCart() {
+function saveCart(sync = true) {
   writeStore('pc-cart', state.cart);
   renderCart();
+  if (sync && state.user) {
+    clearTimeout(saveCart.timer);
+    saveCart.timer = setTimeout(persistCart, 250);
+  }
+}
+
+async function persistCart() {
+  if (!state.user) return;
+  try {
+    await api('/api/cart', { method: 'PUT', body: JSON.stringify({
+      email: state.user.email,
+      name: state.user.name,
+      items: state.cart.map(item => ({ variant_id: item.variant_id, quantity: item.quantity }))
+    }) });
+  } catch (error) { toast(`Cart could not sync: ${error.message}`); }
+}
+
+async function mergeAccountCart() {
+  if (!state.user) return;
+  const { data } = await api(`/api/cart?email=${encodeURIComponent(state.user.email)}`);
+  const combined = new Map();
+  for (const item of [...data, ...state.cart]) {
+    const existing = combined.get(item.variant_id);
+    combined.set(item.variant_id, {
+      key: `${item.product_id}:${item.variant_id}`,
+      product_id: item.product_id,
+      variant_id: item.variant_id,
+      name: item.name,
+      sku: item.sku,
+      price_cents: item.price_cents,
+      size: item.size,
+      colour: item.colour,
+      stock: item.stock,
+      quantity: Math.min(10, item.stock, Math.max(existing?.quantity || 0, item.quantity))
+    });
+  }
+  state.cart = [...combined.values()].filter(item => item.quantity > 0);
+  saveCart();
 }
 
 function renderCart() {
@@ -273,6 +311,7 @@ async function login(event) {
     const { user } = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ name: form.get('name'), email: form.get('email') }) });
     state.user = user;
     writeStore('pc-user', user);
+    await mergeAccountCart();
     updateAccountLabel();
     $('#account-modal').close();
     toast(`Welcome, ${user.name}`);
@@ -329,7 +368,7 @@ async function fetchTracking(orderId, email) {
           const stateClass = index < currentIndex ? 'complete' : index === currentIndex ? 'current' : '';
           return `<div class="tracking-step ${stateClass}"><span class="step-marker">${index < currentIndex ? '✓' : index + 1}</span><div><strong>${stage}</strong><small>${entry ? `${escapeHTML(entry.note)} · ${new Date(`${entry.created_at}Z`).toLocaleString('en-AU')}` : index === currentIndex ? 'Current order stage' : 'Waiting for update'}</small></div></div>`;
         }).join('')}</div>`;
-    result.innerHTML = `<div class="tracking-summary"><p class="eyebrow">Order #${order.id}</p><div><h3>${escapeHTML(order.status)}</h3><strong>${money(order.total_cents)}</strong></div><p>Delivering to ${escapeHTML(order.shipping_name)} in ${escapeHTML(order.city)}.</p></div>${timeline}<div class="tracking-items"><h4>Order contents</h4>${order.items.map(item => `<p><span>${item.quantity}× ${escapeHTML(item.name)}<small>${escapeHTML(item.size)} · ${escapeHTML(item.colour)}</small></span></p>`).join('')}</div>`;
+    result.innerHTML = `<div class="tracking-summary"><p class="eyebrow">Order #${order.id}</p><div><h3>${escapeHTML(order.status)}</h3><strong>${money(order.total_cents)}</strong></div><p>Delivering to ${escapeHTML(order.shipping_name)} in ${escapeHTML(order.city)}.</p><p>Demo payment: <strong>${escapeHTML(order.payment_status || 'Pending')}</strong>${order.transaction_ref ? ` · ${escapeHTML(order.transaction_ref)}` : ''}</p></div>${timeline}<div class="tracking-items"><h4>Order contents</h4>${order.items.map(item => `<p><span>${item.quantity}× ${escapeHTML(item.name)}<small>${escapeHTML(item.size)} · ${escapeHTML(item.colour)}</small></span></p>`).join('')}</div>`;
   } catch (requestError) {
     result.innerHTML = trackingPlaceholder();
     error.textContent = requestError.message;
@@ -476,4 +515,4 @@ $$('dialog').forEach(dialog => dialog.addEventListener('click', event => {
 
 updateAccountLabel();
 renderCart();
-loadCatalogue();
+loadCatalogue().then(() => { if (state.user) mergeAccountCart().catch(error => toast(error.message)); });

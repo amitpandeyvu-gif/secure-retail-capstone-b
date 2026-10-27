@@ -54,7 +54,7 @@ export function createApp(db) {
     project: 'Pop Culture Clothing',
     sprint: 3,
     message: 'Storefront and SQLite API are running.',
-    endpoints: ['/api/health', '/api/categories', '/api/products', '/api/auth/login', '/api/orders', '/api/orders/:id/tracking', '/api/admin/login', '/api/admin/dashboard']
+    endpoints: ['/api/health', '/api/categories', '/api/products', '/api/auth/login', '/api/cart', '/api/orders', '/api/orders/:id/tracking', '/api/contact', '/api/admin/login', '/api/admin/dashboard']
   }));
 
   app.get('/api/health', (_req, res) => {
@@ -107,7 +107,58 @@ export function createApp(db) {
     if (!email) return res.status(400).json({ error: 'Enter a valid email address' });
     if (!name) return res.status(400).json({ error: 'Name must be between 1 and 80 characters' });
     const user = upsertUser(db, email, name);
+    db.prepare('INSERT OR IGNORE INTO carts(user_id) VALUES (?)').run(user.id);
     res.json({ user, message: `Welcome, ${user.name}` });
+  });
+
+  const cartItemsQuery = db.prepare(`SELECT ci.variant_id, ci.quantity, v.product_id, v.size, v.colour, v.stock,
+    p.name, p.sku, p.price_cents FROM cart_items ci JOIN carts c ON c.id = ci.cart_id
+    JOIN variants v ON v.id = ci.variant_id JOIN products p ON p.id = v.product_id
+    JOIN users u ON u.id = c.user_id WHERE u.email = ? ORDER BY ci.id`);
+
+  app.get('/api/cart', (req, res) => {
+    if (!validEmail(req.query.email)) return res.status(400).json({ error: 'A valid email is required' });
+    res.json({ data: cartItemsQuery.all(normaliseEmail(req.query.email)) });
+  });
+
+  app.put('/api/cart', (req, res, next) => {
+    const email = validEmail(req.body?.email) ? normaliseEmail(req.body.email) : null;
+    const name = cleanText(req.body?.name || email?.split('@')[0] || '', 1, 80);
+    const items = req.body?.items;
+    if (!email || !name || !Array.isArray(items) || items.length > 50) return res.status(400).json({ error: 'Provide a valid account and cart items' });
+    if (items.some(item => !Number.isInteger(item.variant_id) || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 10)) return res.status(400).json({ error: 'Cart quantities must be whole numbers from 1 to 10' });
+    try {
+      db.exec('BEGIN IMMEDIATE');
+      const user = upsertUser(db, email, name);
+      db.prepare('INSERT OR IGNORE INTO carts(user_id) VALUES (?)').run(user.id);
+      const cart = db.prepare('SELECT id FROM carts WHERE user_id = ?').get(user.id);
+      db.prepare('DELETE FROM cart_items WHERE cart_id = ?').run(cart.id);
+      const variant = db.prepare('SELECT stock FROM variants WHERE id = ?');
+      const insert = db.prepare('INSERT INTO cart_items(cart_id,variant_id,quantity) VALUES (?,?,?)');
+      for (const item of items) {
+        const available = variant.get(item.variant_id);
+        if (!available) throw new Error('A cart option no longer exists');
+        if (available.stock < item.quantity) throw new Error('A cart quantity exceeds available stock');
+        insert.run(cart.id, item.variant_id, item.quantity);
+      }
+      db.prepare('UPDATE carts SET updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(cart.id);
+      db.exec('COMMIT');
+      res.json({ data: cartItemsQuery.all(email), message: 'Cart saved' });
+    } catch (error) {
+      try { db.exec('ROLLBACK'); } catch {}
+      if (/cart option|quantity exceeds/i.test(error.message)) return res.status(409).json({ error: error.message });
+      next(error);
+    }
+  });
+
+  app.post('/api/contact', (req, res) => {
+    const name = cleanText(req.body?.name, 1, 80);
+    const email = validEmail(req.body?.email) ? normaliseEmail(req.body.email) : null;
+    const subject = cleanText(req.body?.subject, 2, 120);
+    const message = cleanText(req.body?.message, 10, 2000);
+    if (!name || !email || !subject || !message) return res.status(400).json({ error: 'Complete every contact field with valid information' });
+    const result = db.prepare('INSERT INTO contact_messages(name,email,subject,message) VALUES (?,?,?,?)').run(name, email, subject, message);
+    res.status(201).json({ id: Number(result.lastInsertRowid), message: 'Your message has been received' });
   });
 
   function requireAdmin(req, res, next) {
@@ -240,6 +291,35 @@ export function createApp(db) {
     res.json({ message: 'Stock updated' });
   });
 
+  app.post('/api/admin/products/:id/variants', requireAdmin, (req, res, next) => {
+    if (!positiveInteger(req.params.id)) return res.status(400).json({ error: 'id must be a positive integer' });
+    const size = cleanText(req.body?.size, 1, 20)?.toUpperCase();
+    const colour = cleanText(req.body?.colour, 1, 40);
+    const stock = Number(req.body?.stock);
+    const sizes = ['XS', 'S', 'M', 'L', 'XL', 'ONE SIZE'];
+    if (!sizes.includes(size) || !colour || !Number.isInteger(stock) || stock < 0 || stock > 100000) return res.status(400).json({ error: 'Enter a valid size, colour and stock quantity' });
+    if (!db.prepare('SELECT 1 FROM products WHERE id = ?').get(Number(req.params.id))) return res.status(404).json({ error: 'Product not found' });
+    try {
+      const result = db.prepare('INSERT INTO variants(product_id,size,colour,stock) VALUES (?,?,?,?)').run(Number(req.params.id), size, colour, stock);
+      res.status(201).json({ id: Number(result.lastInsertRowid), message: 'Product option added' });
+    } catch (error) {
+      if (/unique/i.test(error.message)) return res.status(409).json({ error: 'That size and colour already exists' });
+      next(error);
+    }
+  });
+
+  app.delete('/api/admin/variants/:id', requireAdmin, (req, res, next) => {
+    if (!positiveInteger(req.params.id)) return res.status(400).json({ error: 'id must be a positive integer' });
+    try {
+      const result = db.prepare('DELETE FROM variants WHERE id = ?').run(Number(req.params.id));
+      if (!Number(result.changes)) return res.status(404).json({ error: 'Variant not found' });
+      res.json({ message: 'Product option deleted' });
+    } catch (error) {
+      if (/foreign key/i.test(error.message)) return res.status(409).json({ error: 'Options used by carts or orders cannot be deleted' });
+      next(error);
+    }
+  });
+
   app.get('/api/admin/orders', requireAdmin, (_req, res) => {
     const orders = db.prepare(`SELECT o.*, u.name AS customer_name, u.email FROM orders o
       JOIN users u ON u.id = o.user_id ORDER BY o.id DESC`).all();
@@ -274,6 +354,25 @@ export function createApp(db) {
     res.json({ data: customers });
   });
 
+  app.get('/api/admin/payments', requireAdmin, (_req, res) => {
+    const payments = db.prepare(`SELECT p.id, p.order_id, p.status, p.transaction_ref, p.amount_cents, p.created_at,
+      u.name AS customer_name, u.email FROM payments p JOIN orders o ON o.id = p.order_id
+      JOIN users u ON u.id = o.user_id ORDER BY p.id DESC`).all();
+    res.json({ data: payments });
+  });
+
+  app.get('/api/admin/messages', requireAdmin, (_req, res) => {
+    res.json({ data: db.prepare('SELECT * FROM contact_messages ORDER BY id DESC').all() });
+  });
+
+  app.patch('/api/admin/messages/:id', requireAdmin, (req, res) => {
+    if (!positiveInteger(req.params.id)) return res.status(400).json({ error: 'id must be a positive integer' });
+    if (!['New', 'Resolved'].includes(req.body?.status)) return res.status(400).json({ error: 'Choose a valid message status' });
+    const result = db.prepare('UPDATE contact_messages SET status = ? WHERE id = ?').run(req.body.status, Number(req.params.id));
+    if (!Number(result.changes)) return res.status(404).json({ error: 'Message not found' });
+    res.json({ message: 'Message status updated' });
+  });
+
   app.get('/api/orders', (req, res) => {
     if (!validEmail(req.query.email)) return res.status(400).json({ error: 'A valid email is required' });
     const email = normaliseEmail(req.query.email);
@@ -291,8 +390,9 @@ export function createApp(db) {
   app.get('/api/orders/:id/tracking', (req, res) => {
     if (!positiveInteger(req.params.id)) return res.status(400).json({ error: 'Enter a valid order number' });
     if (!validEmail(req.query.email)) return res.status(400).json({ error: 'Enter the email used for the order' });
-    const order = db.prepare(`SELECT o.id, o.status, o.total_cents, o.shipping_name, o.city, o.created_at
-      FROM orders o JOIN users u ON u.id = o.user_id WHERE o.id = ? AND u.email = ?`)
+    const order = db.prepare(`SELECT o.id, o.status, o.total_cents, o.shipping_name, o.city, o.created_at,
+      p.status AS payment_status, p.transaction_ref FROM orders o JOIN users u ON u.id = o.user_id
+      LEFT JOIN payments p ON p.order_id = o.id WHERE o.id = ? AND u.email = ?`)
       .get(Number(req.params.id), normaliseEmail(req.query.email));
     if (!order) return res.status(404).json({ error: 'No order matches that number and email address' });
     const items = db.prepare(`SELECT oi.quantity, p.name, v.size, v.colour FROM order_items oi
@@ -348,9 +448,13 @@ export function createApp(db) {
       }
       db.prepare('INSERT INTO order_status_history(order_id,status,note) VALUES (?, ?, ?)')
         .run(orderId, 'Confirmed', 'Order received and confirmed');
+      const transactionRef = `DEMO-${orderId}-${randomUUID().slice(0, 8).toUpperCase()}`;
+      db.prepare('INSERT INTO payments(order_id,status,transaction_ref,amount_cents) VALUES (?,?,?,?)')
+        .run(orderId, 'Succeeded', transactionRef, subtotal + shipping);
       db.exec('COMMIT');
       res.status(201).json({
         order: { id: orderId, status: 'Confirmed', subtotal_cents: subtotal, shipping_cents: shipping, total_cents: subtotal + shipping },
+        payment: { status: 'Succeeded', transaction_ref: transactionRef },
         message: 'Order confirmed'
       });
     } catch (error) {

@@ -37,6 +37,22 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) STRICT;
 
+CREATE TABLE IF NOT EXISTS carts (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS cart_items (
+  id INTEGER PRIMARY KEY,
+  cart_id INTEGER NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
+  variant_id INTEGER NOT NULL REFERENCES variants(id),
+  quantity INTEGER NOT NULL CHECK(quantity BETWEEN 1 AND 10),
+  UNIQUE(cart_id, variant_id)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_cart_items_cart ON cart_items(cart_id);
+
 CREATE TABLE IF NOT EXISTS orders (
   id INTEGER PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id),
@@ -72,3 +88,24 @@ CREATE TABLE IF NOT EXISTS order_status_history (
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_order_status_history_order ON order_status_history(order_id);
+
+CREATE TABLE IF NOT EXISTS payments (
+  id INTEGER PRIMARY KEY,
+  order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  status TEXT NOT NULL CHECK(status IN ('Pending','Succeeded','Failed','Refunded')),
+  transaction_ref TEXT NOT NULL UNIQUE,
+  amount_cents INTEGER NOT NULL CHECK(amount_cents >= 0),
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_payments_order ON payments(order_id);
+
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL CHECK(length(trim(name)) BETWEEN 1 AND 80),
+  email TEXT NOT NULL CHECK(length(trim(email)) BETWEEN 5 AND 254),
+  subject TEXT NOT NULL CHECK(length(trim(subject)) BETWEEN 2 AND 120),
+  message TEXT NOT NULL CHECK(length(trim(message)) BETWEEN 10 AND 2000),
+  status TEXT NOT NULL DEFAULT 'New' CHECK(status IN ('New','Resolved')),
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+) STRICT;

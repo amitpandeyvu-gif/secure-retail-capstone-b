@@ -36,6 +36,8 @@
         <button class="nav-item" data-page="products"><span>◇</span> Products</button>
         <button class="nav-item" data-page="orders"><span>▤</span> Orders</button>
         <button class="nav-item" data-page="customers"><span>♙</span> Customers</button>
+        <button class="nav-item" data-page="payments"><span>$</span> Payments</button>
+        <button class="nav-item" data-page="support"><span>✉</span> Support</button>
       </nav>
       <div class="sidebar-bottom">
         <a href="/" target="_blank"><span>↗</span> View customer store</a>
@@ -74,6 +76,16 @@
           <div class="page-actions"><p class="muted">Customer accounts created through the email sign-in flow.</p></div>
           <section class="panel"><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Email</th><th>Joined</th><th>Orders</th><th>Total spent</th></tr></thead><tbody id="customer-rows"></tbody></table></div></section>
         </section>
+
+        <section class="page" id="payments-page">
+          <div class="page-actions"><p class="muted">Fictional payment records created by the safe demonstration checkout.</p></div>
+          <section class="panel"><div class="table-wrap"><table><thead><tr><th>Payment</th><th>Order</th><th>Customer</th><th>Reference</th><th>Amount</th><th>Status</th></tr></thead><tbody id="payment-rows"></tbody></table></div></section>
+        </section>
+
+        <section class="page" id="support-page">
+          <div class="page-actions"><p class="muted">Messages submitted through the customer contact form.</p></div>
+          <section class="panel"><div class="table-wrap"><table><thead><tr><th>Message</th><th>Customer</th><th>Subject</th><th>Received</th><th>Status</th></tr></thead><tbody id="message-rows"></tbody></table></div></section>
+        </section>
       </div>
     </main>
   </div>
@@ -94,6 +106,16 @@
       <fieldset id="initial-variant"><legend>Initial stock option</legend><div class="form-grid three"><label>Size<select name="size"><option>XS</option><option>S</option><option selected>M</option><option>L</option><option>XL</option><option>ONE SIZE</option></select></label><label>Colour<input name="colour" value="Black" maxlength="40"></label><label>Quantity<input name="stock" type="number" min="0" max="100000" value="10"></label></div></fieldset>
       <p class="form-error" id="product-error" role="alert"></p>
       <div class="dialog-actions"><button class="button" value="cancel">Cancel</button><button class="button primary" id="save-product" type="submit" value="default">Save product</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="variant-dialog">
+    <form method="dialog" class="dialog-shell" id="variant-form">
+      <div class="dialog-heading"><div><p class="eyebrow">Inventory option</p><h2>Add size and colour</h2></div><button class="close-button" value="cancel" aria-label="Close">×</button></div>
+      <input type="hidden" name="product_id">
+      <div class="form-grid three"><label>Size<select name="size"><option>XS</option><option>S</option><option selected>M</option><option>L</option><option>XL</option><option>ONE SIZE</option></select></label><label>Colour<input name="colour" value="Black" maxlength="40" required></label><label>Quantity<input name="stock" type="number" min="0" max="100000" value="10" required></label></div>
+      <p class="form-error" id="variant-error" role="alert"></p>
+      <div class="dialog-actions"><button class="button" value="cancel">Cancel</button><button class="button primary" type="submit" value="default">Add option</button></div>
     </form>
   </dialog>
 

@@ -1,4 +1,4 @@
-const state = { token: sessionStorage.getItem('pc-admin-token'), products: [], orders: [], customers: [] };
+const state = { token: sessionStorage.getItem('pc-admin-token'), products: [], orders: [], customers: [], payments: [], messages: [] };
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 const money = cents => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(Number(cents) / 100);
@@ -30,7 +30,7 @@ async function enterAdmin(email) {
   $('#login-screen').hidden = true;
   $('#admin-app').hidden = false;
   $('#admin-email').textContent = email || 'Administrator';
-  await Promise.all([loadDashboard(), loadProducts(), loadOrders(), loadCustomers()]);
+  await Promise.all([loadDashboard(), loadProducts(), loadOrders(), loadCustomers(), loadPayments(), loadMessages()]);
 }
 
 async function login(event) {
@@ -77,8 +77,8 @@ function renderProducts() {
   $('#product-rows').innerHTML = products.length ? products.map(product => `<tr>
     <td><div class="product-cell"><span class="product-thumb">${escapeHTML(product.sku.split('-')[0])}</span><div><strong>${escapeHTML(product.name)}</strong><small>${escapeHTML(product.sku)}</small></div></div></td>
     <td>${escapeHTML(product.category)}</td><td>${money(product.price_cents)}</td>
-    <td><div class="stock-editor">${product.variants.map(v => `<label title="${escapeHTML(v.colour)}"><span>${escapeHTML(v.size)}</span><input type="number" min="0" max="100000" value="${v.stock}" data-stock="${v.id}" aria-label="Stock for ${escapeHTML(product.name)} ${escapeHTML(v.size)}"></label>`).join('')}</div></td>
-    <td><strong>${product.stock}</strong></td><td><div class="row-actions"><button class="icon-action" data-edit="${product.id}">Edit</button><button class="icon-action" data-delete="${product.id}">Delete</button></div></td>
+    <td><div class="stock-editor">${product.variants.map(v => `<div class="stock-option"><label title="${escapeHTML(v.colour)}"><span>${escapeHTML(v.size)}</span><input type="number" min="0" max="100000" value="${v.stock}" data-stock="${v.id}" aria-label="Stock for ${escapeHTML(product.name)} ${escapeHTML(v.size)}"></label><button type="button" data-delete-variant="${v.id}" aria-label="Delete ${escapeHTML(v.size)} ${escapeHTML(v.colour)} option">×</button></div>`).join('')}</div></td>
+    <td><strong>${product.stock}</strong></td><td><div class="row-actions"><button class="icon-action" data-add-variant="${product.id}">+ Option</button><button class="icon-action" data-edit="${product.id}">Edit</button><button class="icon-action" data-delete="${product.id}">Delete</button></div></td>
   </tr>`).join('') : '<tr><td class="empty-row" colspan="6">No matching products.</td></tr>';
 }
 
@@ -127,6 +127,32 @@ async function deleteProduct(id) {
   catch (error) { toast(error.message); }
 }
 
+function openVariant(productId) {
+  const form = $('#variant-form');
+  form.reset();
+  form.elements.product_id.value = productId;
+  $('#variant-error').textContent = '';
+  $('#variant-dialog').showModal();
+}
+
+async function saveVariant(event) {
+  event.preventDefault();
+  const form = new FormData(event.currentTarget);
+  const productId = form.get('product_id');
+  try {
+    await api(`/api/admin/products/${productId}/variants`, { method:'POST', body:JSON.stringify({ size:form.get('size'), colour:form.get('colour'), stock:Number(form.get('stock')) }) });
+    $('#variant-dialog').close();
+    toast('Product option added');
+    await Promise.all([loadProducts(), loadDashboard()]);
+  } catch (error) { $('#variant-error').textContent = error.message; }
+}
+
+async function deleteVariant(id) {
+  if (!confirm('Delete this size and colour option?')) return;
+  try { await api(`/api/admin/variants/${id}`, { method:'DELETE' }); toast('Product option deleted'); await Promise.all([loadProducts(), loadDashboard()]); }
+  catch (error) { toast(error.message); }
+}
+
 async function loadOrders() {
   state.orders = (await api('/api/admin/orders')).data;
   const statuses = ['Confirmed','Packed','Shipped','Delivered','Cancelled'];
@@ -143,16 +169,33 @@ async function loadCustomers() {
   $('#customer-rows').innerHTML = state.customers.length ? state.customers.map(customer => `<tr><td><strong>${escapeHTML(customer.name)}</strong></td><td>${escapeHTML(customer.email)}</td><td>${new Date(customer.created_at + 'Z').toLocaleDateString('en-AU')}</td><td>${customer.order_count}</td><td><strong>${money(customer.spent_cents)}</strong></td></tr>`).join('') : '<tr><td class="empty-row" colspan="5">No customer accounts yet.</td></tr>';
 }
 
+async function loadPayments() {
+  state.payments = (await api('/api/admin/payments')).data;
+  $('#payment-rows').innerHTML = state.payments.length ? state.payments.map(payment => `<tr><td><strong>#${payment.id}</strong></td><td>#${payment.order_id}</td><td><div class="customer-cell"><strong>${escapeHTML(payment.customer_name)}</strong><small>${escapeHTML(payment.email)}</small></div></td><td>${escapeHTML(payment.transaction_ref)}</td><td><strong>${money(payment.amount_cents)}</strong></td><td><span class="status-pill">${escapeHTML(payment.status)}</span></td></tr>`).join('') : '<tr><td class="empty-row" colspan="6">No payment records yet.</td></tr>';
+}
+
+async function loadMessages() {
+  state.messages = (await api('/api/admin/messages')).data;
+  $('#message-rows').innerHTML = state.messages.length ? state.messages.map(message => `<tr><td><strong>#${message.id}</strong><br><small>${escapeHTML(message.message)}</small></td><td><div class="customer-cell"><strong>${escapeHTML(message.name)}</strong><small>${escapeHTML(message.email)}</small></div></td><td>${escapeHTML(message.subject)}</td><td>${new Date(message.created_at + 'Z').toLocaleDateString('en-AU')}</td><td><select class="status-select" data-message-status="${message.id}"><option ${message.status === 'New' ? 'selected' : ''}>New</option><option ${message.status === 'Resolved' ? 'selected' : ''}>Resolved</option></select></td></tr>`).join('') : '<tr><td class="empty-row" colspan="5">No customer messages yet.</td></tr>';
+}
+
+async function updateMessage(select) {
+  try { await api(`/api/admin/messages/${select.dataset.messageStatus}`, { method:'PATCH', body:JSON.stringify({ status:select.value }) }); toast('Support message updated'); await loadMessages(); }
+  catch (error) { toast(error.message); await loadMessages(); }
+}
+
 $('#admin-login').addEventListener('submit', login);
 $('#product-form').addEventListener('submit', saveProduct);
+$('#variant-form').addEventListener('submit', saveVariant);
 $('#product-search').addEventListener('input', renderProducts);
 $('#menu-button').addEventListener('click', () => $('#sidebar').classList.toggle('open'));
 $$('.nav-item').forEach(button => button.addEventListener('click', () => showPage(button.dataset.page)));
 $$('[data-page-link]').forEach(button => button.addEventListener('click', () => showPage(button.dataset.pageLink)));
 $$('[data-open-product]').forEach(button => button.addEventListener('click', () => openProduct()));
 $('#product-rows').addEventListener('change', event => { if (event.target.matches('[data-stock]')) updateStock(event.target); });
-$('#product-rows').addEventListener('click', event => { const edit = event.target.closest('[data-edit]'); const remove = event.target.closest('[data-delete]'); if (edit) openProduct(state.products.find(item => item.id === Number(edit.dataset.edit))); if (remove) deleteProduct(remove.dataset.delete); });
+$('#product-rows').addEventListener('click', event => { const edit = event.target.closest('[data-edit]'); const remove = event.target.closest('[data-delete]'); const addVariant = event.target.closest('[data-add-variant]'); const removeVariant = event.target.closest('[data-delete-variant]'); if (edit) openProduct(state.products.find(item => item.id === Number(edit.dataset.edit))); if (remove) deleteProduct(remove.dataset.delete); if (addVariant) openVariant(addVariant.dataset.addVariant); if (removeVariant) deleteVariant(removeVariant.dataset.deleteVariant); });
 $('#order-rows').addEventListener('change', event => { if (event.target.matches('[data-order-status]')) updateOrder(event.target); });
+$('#message-rows').addEventListener('change', event => { if (event.target.matches('[data-message-status]')) updateMessage(event.target); });
 $('#logout').addEventListener('click', async () => { try { await api('/api/admin/logout', { method:'POST' }); } catch {} showLogin(); });
 
 if (state.token) enterAdmin().catch(showLogin); else showLogin();

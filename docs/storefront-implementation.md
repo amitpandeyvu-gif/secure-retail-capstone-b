@@ -22,6 +22,11 @@ creates an order and its line items in one transaction, then reduces variant sto
 Free shipping applies when the subtotal is at least AUD 80; otherwise shipping is
 AUD 9.95.
 
+Guest bags use browser storage. After email sign-in, the bag is synchronised with
+`carts` and `cart_items` in SQLite, so it can be recovered from the same account.
+Checkout also creates a fictional `payments` record with a unique demonstration
+reference and never requests or stores card details.
+
 The checkout does not collect card numbers or process money. It records a simulated
 confirmed order so the complete storefront flow can be demonstrated safely.
 
@@ -43,6 +48,11 @@ updates, fulfilment status controls and customer summaries. Administrator API
 requests require a short-lived bearer token returned by the separate admin login.
 Every fulfilment change creates a database history record that is shown immediately
 in the customer tracking timeline.
+
+Administrators can create and edit products, add and remove size and colour
+options, change stock, review fictional payments, and resolve messages submitted
+through the customer Contact page. The About and Help pages complete the earlier
+frontend navigation and explain delivery, returns, sizing and safe payments.
 
 The default local assessment credentials are documented in `.env.example` and can
 be replaced through `ADMIN_EMAIL` and `ADMIN_PASSWORD` environment variables.

@@ -38,6 +38,21 @@ search, category filters, sorting, product options, wishlist, shopping bag,
 email sign-in, demo checkout, order history and order tracking. A separate administration portal
 provides catalogue, inventory, order and customer management at
 http://127.0.0.1:3000/admin.html.
+
+## Capstone B functional coverage
+
+| Requirement | Implementation |
+|---|---|
+| Product catalogue | Searchable products, categories, prices, images and live variant stock |
+| Customer access | Any valid email opens a demonstration customer account |
+| Shopping cart | Local cart for guests and a persistent SQLite cart after sign-in |
+| Checkout | Validated delivery details, server-calculated totals and transactional stock reduction |
+| Payments | Safe fictional payment record with status, amount and unique reference; no card data |
+| Orders | Order history, item details and administrator fulfilment controls |
+| Tracking | Email-verified timeline with status history and payment confirmation |
+| Administration | Dashboard, product CRUD, variant CRUD, stock, orders, customers, payments and support |
+| Customer information | About, Contact, Delivery, Returns and Sizing pages |
+| Support | Contact form stored in SQLite with New and Resolved administration states |
 If PowerShell blocks `npm.ps1`, use `npm.cmd` for these commands.
 The database file is `data/retail.db` (created by `db:init`, excluded from Git).
 The SQL scripts and lockfile allow another developer to recreate the environment.
@@ -57,6 +72,9 @@ email-only demonstration flow requested for the storefront.
 |---|---|
 | `GET /` | Storefront application |
 | `GET /admin.html` | Responsive administration portal |
+| `GET /about.html` | Store and project information |
+| `GET /contact.html` | Database-backed customer contact form |
+| `GET /help.html` | Delivery, returns, sizing and payment information |
 | `GET /api` | API overview |
 | `/api/health` | Server and database health |
 | `/api/categories` | Three categories |
@@ -65,15 +83,20 @@ email-only demonstration flow requested for the storefront.
 | `/api/products/1` | One product; 404 if absent |
 | `/api/products/1/variants` | Size, colour and stock for one product |
 | `POST /api/auth/login` | Creates or returns a demo account from a valid email |
+| `GET/PUT /api/cart` | Loads or synchronises a signed-in customer's persistent cart |
 | `POST /api/orders` | Validates an order, stores it and reduces variant stock |
 | `GET /api/orders?email=...` | Returns order history for a demo account |
 | `GET /api/orders/:id/tracking?email=...` | Returns verified order progress and status history |
+| `POST /api/contact` | Validates and stores a customer support message |
 | `POST /api/admin/login` | Starts an eight-hour in-memory administrator session |
 | `GET /api/admin/dashboard` | Summary totals, latest orders and low stock |
 | `GET/POST/PUT/DELETE /api/admin/products...` | Protected catalogue management |
 | `PATCH /api/admin/variants/:id` | Protected stock update |
 | `GET/PATCH /api/admin/orders...` | Protected order and fulfilment management |
 | `GET /api/admin/customers` | Protected customer summary |
+| `POST/DELETE /api/admin/.../variants` | Protected size and colour option management |
+| `GET /api/admin/payments` | Protected fictional payment records |
+| `GET/PATCH /api/admin/messages...` | Protected customer support workflow |
 
 All responses are JSON. `price_cents` uses AUD integer cents (2995 = AUD 29.95).
 Malformed IDs/filters return 400; missing resources/routes return 404.
@@ -81,7 +104,7 @@ Malformed IDs/filters return 400; missing resources/routes return 404.
 ## Structure
 
 ```text
-database/       schema.sql and fictional seed.sql
+database/       schema.sql and fictional seed.sql for catalogue, cart, order, payment and support data
 data/           generated retail.db
 public/         responsive customer storefront and administration portal
 src/            application routes and database module

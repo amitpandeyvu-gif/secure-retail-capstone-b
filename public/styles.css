@@ -43,7 +43,7 @@ img { display: block; width: 100%; }
 .action-icon { font-size: 1.35rem; line-height: 1; }
 .count { position: absolute; top: -3px; right: -3px; min-width: 17px; height: 17px; padding: 1px 4px; border-radius: 20px; background: var(--accent); color: white; font-size: .65rem; display: grid; place-items: center; }
 .primary-nav { border-top: 1px solid #efefef; }
-.nav-inner { min-height: 43px; display: flex; align-items: center; justify-content: center; gap: 34px; }
+.nav-inner { min-height: 43px; display: flex; align-items: center; justify-content: center; gap: clamp(14px, 1.7vw, 26px); }
 .nav-inner a, .nav-inner button { border: 0; background: none; padding: 12px 0; font-size: .83rem; cursor: pointer; position: relative; }
 .nav-inner a::after, .nav-inner button::after { content: ""; position: absolute; left: 0; right: 100%; bottom: 7px; height: 1px; background: currentColor; transition: right .2s; }
 .nav-inner a:hover::after, .nav-inner button:hover::after { right: 0; }

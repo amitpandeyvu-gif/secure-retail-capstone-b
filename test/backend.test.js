@@ -10,8 +10,12 @@ test('database constraints and seed data', () => {
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM products').get().n, 6);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM variants').get().n, 11);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users').get().n, 0);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM carts').get().n, 0);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM cart_items').get().n, 0);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM orders').get().n, 0);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM order_status_history').get().n, 0);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM payments').get().n, 0);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM contact_messages').get().n, 0);
     assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
     assert.throws(() => db.prepare('UPDATE products SET price_cents = -1 WHERE id = 1').run());
     assert.throws(() => db.prepare('UPDATE variants SET stock = -1 WHERE id = 1').run());
@@ -47,6 +51,11 @@ test('HTTP routes query SQLite and reject invalid requests', async () => {
     assert.equal((await get('/api/products?q=%27%20OR%201%3D1--'))[1].count, 0);
     assert.equal((await post('/api/auth/login', { name: 'Amit Pandey', email: 'amit@example.com' }))[0], 200);
     assert.equal((await post('/api/auth/login', { name: 'Amit', email: 'not-an-email' }))[0], 400);
+    const savedCart = await fetch(base + '/api/cart', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Amit Pandey', email: 'amit@example.com', items: [{ variant_id: 1, quantity: 1 }] }) });
+    assert.equal(savedCart.status, 200);
+    assert.equal((await get('/api/cart?email=amit%40example.com'))[1].data[0].quantity, 1);
+    const contact = await post('/api/contact', { name: 'Amit Pandey', email: 'amit@example.com', subject: 'Order support', message: 'Please help with my demonstration order.' });
+    assert.equal(contact[0], 201);
     assert.equal((await get('/api/admin/dashboard'))[0], 401);
     assert.equal((await post('/api/admin/login', { email: 'admin@popculture.com', password: 'wrong' }))[0], 401);
     const adminLogin = await post('/api/admin/login', { email: 'admin@popculture.com', password: 'Admin123!' });
@@ -60,8 +69,13 @@ test('HTTP routes query SQLite and reject invalid requests', async () => {
     const created = await admin('/api/admin/products', 'POST', { category_id: 3, sku: 'CAP-TEST-009', name: 'Test Cap', description: 'Admin test product', price_cents: 1595, material: 'Cotton', size_guide: 'Adjustable', size: 'ONE SIZE', colour: 'Black', stock: 5 });
     assert.equal(created[0], 201);
     assert.equal((await admin(`/api/admin/variants/${db.prepare("SELECT id FROM variants WHERE product_id = ?").get(created[1].id).id}`, 'PATCH', { stock: 9 }))[0], 200);
+    const addedVariant = await admin(`/api/admin/products/${created[1].id}/variants`, 'POST', { size: 'ONE SIZE', colour: 'Navy', stock: 4 });
+    assert.equal(addedVariant[0], 201);
+    assert.equal((await admin(`/api/admin/variants/${addedVariant[1].id}`, 'DELETE'))[0], 200);
     assert.equal((await admin(`/api/admin/products/${created[1].id}`, 'PUT', { category_id: 3, sku: 'CAP-TEST-009', name: 'Updated Test Cap', description: 'Updated admin test product', price_cents: 1695, material: 'Cotton', size_guide: 'Adjustable' }))[0], 200);
     assert.equal((await admin(`/api/admin/products/${created[1].id}`, 'DELETE'))[0], 200);
+    assert.equal((await admin('/api/admin/messages'))[1].data.length, 1);
+    assert.equal((await admin(`/api/admin/messages/${contact[1].id}`, 'PATCH', { status: 'Resolved' }))[0], 200);
     const order = await post('/api/orders', {
       name: 'Amit Pandey', email: 'amit@example.com', address: '10 Example Street', city: 'Melbourne', postcode: '3000',
       items: [{ variant_id: 1, quantity: 2 }]
@@ -73,6 +87,7 @@ test('HTTP routes query SQLite and reject invalid requests', async () => {
     const tracking = await get(`/api/orders/${order[1].order.id}/tracking?email=amit%40example.com`);
     assert.equal(tracking[0], 200);
     assert.equal(tracking[1].order.status, 'Confirmed');
+    assert.equal(tracking[1].order.payment_status, 'Succeeded');
     assert.equal(tracking[1].order.history[0].status, 'Confirmed');
     assert.equal((await get(`/api/orders/${order[1].order.id}/tracking?email=wrong%40example.com`))[0], 404);
     assert.equal((await admin('/api/admin/orders'))[1].data.length, 1);
@@ -81,6 +96,7 @@ test('HTTP routes query SQLite and reject invalid requests', async () => {
     assert.equal(packedTracking[1].order.status, 'Packed');
     assert.deepEqual(packedTracking[1].order.history.map(item => item.status), ['Confirmed', 'Packed']);
     assert.equal((await admin('/api/admin/customers'))[1].data[0].order_count, 1);
+    assert.equal((await admin('/api/admin/payments'))[1].data[0].amount_cents, 6985);
     for (const path of ['/api/products/999', '/api/products/999/variants', '/missing']) {
       if (path === '/missing') {
         const response = await fetch(base + path);
