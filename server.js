@@ -9,7 +9,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 const db = openDatabase();
 const app = createApp(db);
 const server = app.listen(port, host, () => {
-  console.log('Secure Retail Product Catalogue - Sprint 3');
+  console.log('Pop Culture Clothing Storefront');
   console.log(`Server running at http://${host}:${port}`);
   console.log('SQLite database connected');
 });

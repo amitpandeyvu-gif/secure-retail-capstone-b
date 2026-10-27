@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Pop Culture Clothing — graphic tees, hoodies and accessories with live stock from SQLite.">
+  <title>Pop Culture Clothing</title>
+  <link rel="preconnect" href="https://images.unsplash.com">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#products">Skip to products</a>
+  <div class="promo-bar">
+    <p>Free standard shipping over $80 AUD</p>
+    <p class="promo-extra">New season essentials · Easy demo checkout</p>
+  </div>
+
+  <header class="site-header">
+    <div class="header-main shell">
+      <button class="icon-button mobile-menu" id="mobile-menu" aria-label="Open menu" aria-controls="primary-nav" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <a class="brand" href="#top" aria-label="Pop Culture Clothing home">
+        <span class="brand-mark">PC</span>
+        <span>POP CULTURE</span>
+      </a>
+      <form class="search" id="search-form" role="search">
+        <label class="sr-only" for="search-input">Search products</label>
+        <input id="search-input" type="search" placeholder="Search tees, hoodies and accessories" autocomplete="off">
+        <button type="submit" aria-label="Search">⌕</button>
+      </form>
+      <div class="header-actions">
+        <button class="header-action" id="account-button" type="button">
+          <span class="action-icon">♙</span><span id="account-label">Sign in</span>
+        </button>
+        <button class="header-action" id="wishlist-button" type="button">
+          <span class="action-icon">♡</span><span>Saved</span><b class="count" id="wishlist-count">0</b>
+        </button>
+        <button class="header-action" id="cart-button" type="button">
+          <span class="action-icon">▢</span><span>Bag</span><b class="count" id="cart-count">0</b>
+        </button>
+      </div>
+    </div>
+    <nav class="primary-nav" id="primary-nav" aria-label="Primary navigation">
+      <div class="shell nav-inner">
+        <a href="#new">New in</a>
+        <button data-category="all">Shop all</button>
+        <button data-category="1">Graphic tees</button>
+        <button data-category="2">Hoodies</button>
+        <button data-category="3">Accessories</button>
+        <a href="#benefits">Why shop with us</a>
+        <a class="sale-link" href="#products">Trending now</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero" id="new">
+      <div class="hero-media" role="img" aria-label="Modern streetwear styling in a city setting"></div>
+      <div class="hero-content shell">
+        <p class="eyebrow">New season · 2026</p>
+        <h1>Wear your<br>favourite universe.</h1>
+        <p>Original pop-culture inspired essentials, designed for everyday rotation.</p>
+        <div class="hero-actions">
+          <a class="button button-dark" href="#products">Shop the collection</a>
+          <button class="button button-light" type="button" data-category-jump="2">Explore hoodies</button>
+        </div>
+      </div>
+      <div class="hero-note">Designed in Melbourne · Prices in AUD</div>
+    </section>
+
+    <section class="category-strip shell" aria-label="Shop categories">
+      <button class="category-card category-tees" data-category-jump="1">
+        <span>Graphic tees</span><small>Original artwork</small>
+      </button>
+      <button class="category-card category-hoodies" data-category-jump="2">
+        <span>Hoodies</span><small>Soft everyday layers</small>
+      </button>
+      <button class="category-card category-accessories" data-category-jump="3">
+        <span>Accessories</span><small>Finish the look</small>
+      </button>
+    </section>
+
+    <section class="catalogue shell" id="products">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">The edit</p>
+          <h2>Shop the collection</h2>
+        </div>
+        <p><span id="product-count">0</span> styles</p>
+      </div>
+      <div class="catalogue-toolbar">
+        <div class="filter-tabs" id="category-filters" aria-label="Filter by category">
+          <button class="active" data-category="all">All</button>
+          <button data-category="1">Tees</button>
+          <button data-category="2">Hoodies</button>
+          <button data-category="3">Accessories</button>
+        </div>
+        <label class="sort-label">Sort
+          <select id="sort-select">
+            <option value="featured">Featured</option>
+            <option value="price-low">Price low to high</option>
+            <option value="price-high">Price high to low</option>
+            <option value="name">Name A–Z</option>
+          </select>
+        </label>
+      </div>
+      <div class="status" id="catalogue-status" role="status">Loading the collection…</div>
+      <div class="product-grid" id="product-grid"></div>
+      <div class="empty-state" id="empty-state" hidden>
+        <h3>No styles found</h3>
+        <p>Try another search or clear the current filters.</p>
+        <button class="button button-dark" id="clear-filters" type="button">Clear filters</button>
+      </div>
+    </section>
+
+    <section class="editorial-banner">
+      <div class="editorial-image" role="img" aria-label="Close-up of premium cotton streetwear"></div>
+      <div class="editorial-copy">
+        <p class="eyebrow">Made for repeat wear</p>
+        <h2>Good graphics.<br>Better basics.</h2>
+        <p>Comfortable fabrics, considered details and straightforward sizing. Built to look good beyond one season.</p>
+        <a href="#products">Discover the collection <span>→</span></a>
+      </div>
+    </section>
+
+    <section class="benefits shell" id="benefits">
+      <article><span>01</span><h3>Live stock</h3><p>Every size and colour is read directly from the SQLite catalogue.</p></article>
+      <article><span>02</span><h3>Simple sign-in</h3><p>Continue with any valid email address and return to your order history.</p></article>
+      <article><span>03</span><h3>Secure demo flow</h3><p>No real payment details are requested or stored in this assessment project.</p></article>
+      <article><span>04</span><h3>Order tracking</h3><p>Placed orders are recorded with totals, items and a clear confirmation status.</p></article>
+    </section>
+
+    <section class="newsletter">
+      <div>
+        <p class="eyebrow">Stay in the loop</p>
+        <h2>Get 15% off your next style drop.</h2>
+      </div>
+      <form id="newsletter-form">
+        <label class="sr-only" for="newsletter-email">Email address</label>
+        <input id="newsletter-email" type="email" required placeholder="Your email address">
+        <button type="submit">Join the list</button>
+      </form>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell footer-grid">
+      <div><a class="brand brand-footer" href="#top"><span class="brand-mark">PC</span><span>POP CULTURE</span></a><p>Original clothing for collectors, players and everyday fans.</p></div>
+      <div><h3>Shop</h3><a href="#products">New in</a><a href="#products">Graphic tees</a><a href="#products">Hoodies</a><a href="#products">Accessories</a></div>
+      <div><h3>Help</h3><a href="#benefits">Delivery</a><a href="#benefits">Returns</a><a href="#benefits">Size guide</a><button id="footer-orders" type="button">My orders</button></div>
+      <div><h3>Project</h3><a href="/api" target="_blank" rel="noreferrer">API overview</a><a href="/api/health" target="_blank" rel="noreferrer">System status</a><p>Capstone B · Sprint 3</p></div>
+    </div>
+    <div class="shell footer-bottom"><span>© 2026 Pop Culture Clothing</span><span>Demo storefront · AUD</span></div>
+  </footer>
+
+  <div class="overlay" id="overlay" hidden></div>
+
+  <aside class="drawer cart-drawer" id="cart-drawer" aria-hidden="true" aria-labelledby="cart-title">
+    <div class="drawer-header"><div><p class="eyebrow">Your selection</p><h2 id="cart-title">Shopping bag</h2></div><button class="close-button" data-close aria-label="Close cart">×</button></div>
+    <div class="drawer-body" id="cart-items"></div>
+    <div class="drawer-footer" id="cart-summary">
+      <div><span>Subtotal</span><strong id="cart-subtotal">$0.00</strong></div>
+      <p>Shipping calculated at checkout. Free over $80.</p>
+      <button class="button button-dark button-full" id="checkout-button" type="button">Checkout</button>
+    </div>
+  </aside>
+
+  <aside class="drawer wishlist-drawer" id="wishlist-drawer" aria-hidden="true" aria-labelledby="wishlist-title">
+    <div class="drawer-header"><div><p class="eyebrow">Saved for later</p><h2 id="wishlist-title">Wishlist</h2></div><button class="close-button" data-close aria-label="Close wishlist">×</button></div>
+    <div class="drawer-body" id="wishlist-items"></div>
+  </aside>
+
+  <dialog class="modal product-modal" id="product-modal">
+    <button class="close-button modal-close" data-dialog-close aria-label="Close product details">×</button>
+    <div id="product-detail"></div>
+  </dialog>
+
+  <dialog class="modal account-modal" id="account-modal">
+    <button class="close-button modal-close" data-dialog-close aria-label="Close account">×</button>
+    <div class="modal-content" id="account-content"></div>
+  </dialog>
+
+  <dialog class="modal checkout-modal" id="checkout-modal">
+    <button class="close-button modal-close" data-dialog-close aria-label="Close checkout">×</button>
+    <div class="checkout-layout">
+      <form id="checkout-form" class="checkout-form">
+        <p class="eyebrow">Secure demo checkout</p>
+        <h2>Delivery details</h2>
+        <div class="form-grid">
+          <label>Full name<input name="name" required maxlength="80" autocomplete="name"></label>
+          <label>Email<input name="email" type="email" required maxlength="254" autocomplete="email"></label>
+          <label class="span-two">Street address<input name="address" required maxlength="160" autocomplete="street-address"></label>
+          <label>City or suburb<input name="city" required maxlength="80" autocomplete="address-level2"></label>
+          <label>Postcode<input name="postcode" required maxlength="12" autocomplete="postal-code"></label>
+        </div>
+        <fieldset>
+          <legend>Payment method</legend>
+          <label class="payment-option"><input type="radio" name="payment" checked><span><strong>Demo card payment</strong><small>No card details required for this assessment.</small></span></label>
+        </fieldset>
+        <p class="form-error" id="checkout-error" role="alert"></p>
+        <button class="button button-dark button-full" type="submit">Place order</button>
+      </form>
+      <div class="checkout-summary"><h3>Order summary</h3><div id="checkout-items"></div><div id="checkout-totals"></div></div>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

@@ -9,6 +9,8 @@ test('database constraints and seed data', () => {
   try {
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM products').get().n, 6);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM variants').get().n, 11);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users').get().n, 0);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM orders').get().n, 0);
     assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
     assert.throws(() => db.prepare('UPDATE products SET price_cents = -1 WHERE id = 1').run());
     assert.throws(() => db.prepare('UPDATE variants SET stock = -1 WHERE id = 1').run());
@@ -25,8 +27,9 @@ test('HTTP routes query SQLite and reject invalid requests', async () => {
   await once(server, 'listening');
   const base = `http://127.0.0.1:${server.address().port}`;
   const get = async (path) => { const res = await fetch(base + path); return [res.status, await res.json()]; };
+  const post = async (path, body) => { const res = await fetch(base + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); return [res.status, await res.json()]; };
   try {
-    assert.equal((await get('/'))[1].sprint, 3);
+    assert.equal((await get('/api'))[1].sprint, 3);
     assert.equal((await get('/api/health'))[1].database, 'connected');
     assert.equal((await get('/api/categories'))[1].data.length, 3);
     assert.equal((await get('/api/products'))[1].count, 6);
@@ -41,10 +44,26 @@ test('HTTP routes query SQLite and reject invalid requests', async () => {
       assert.equal((await get(path))[0], 400, path);
     }
     assert.equal((await get('/api/products?q=%27%20OR%201%3D1--'))[1].count, 0);
+    assert.equal((await post('/api/auth/login', { name: 'Amit Pandey', email: 'amit@example.com' }))[0], 200);
+    assert.equal((await post('/api/auth/login', { name: 'Amit', email: 'not-an-email' }))[0], 400);
+    const order = await post('/api/orders', {
+      name: 'Amit Pandey', email: 'amit@example.com', address: '10 Example Street', city: 'Melbourne', postcode: '3000',
+      items: [{ variant_id: 1, quantity: 2 }]
+    });
+    assert.equal(order[0], 201);
+    assert.equal(order[1].order.total_cents, 6985);
+    assert.equal((await get('/api/orders?email=amit%40example.com'))[1].data.length, 1);
+    assert.equal(db.prepare('SELECT stock FROM variants WHERE id = 1').get().stock, 28);
     for (const path of ['/api/products/999', '/api/products/999/variants', '/missing']) {
-      assert.equal((await get(path))[0], 404, path);
+      if (path === '/missing') {
+        const response = await fetch(base + path);
+        assert.equal(response.status, 200, path);
+        assert.match(await response.text(), /Pop Culture Clothing/);
+      } else {
+        assert.equal((await get(path))[0], 404, path);
+      }
     }
-    const post = await fetch(base + '/api/products', { method: 'POST' });
-    assert.equal(post.status, 404);
+    const unsupported = await fetch(base + '/api/products', { method: 'POST' });
+    assert.equal(unsupported.status, 404);
   } finally { await new Promise(resolve => server.close(resolve)); db.close(); }
 });

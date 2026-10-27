@@ -1,8 +1,8 @@
 {
   "name": "secure-retail-capstone-b",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
-  "description": "Sprint 3 backend for the Pop Culture Clothing catalogue",
+  "description": "Full-stack Pop Culture Clothing storefront with Express and SQLite",
   "type": "module",
   "engines": { "node": ">=24.0.0" },
   "scripts": {
