@@ -54,7 +54,7 @@ export function createApp(db) {
     project: 'Pop Culture Clothing',
     sprint: 3,
     message: 'Storefront and SQLite API are running.',
-    endpoints: ['/api/health', '/api/categories', '/api/products', '/api/auth/login', '/api/orders', '/api/admin/login', '/api/admin/dashboard']
+    endpoints: ['/api/health', '/api/categories', '/api/products', '/api/auth/login', '/api/orders', '/api/orders/:id/tracking', '/api/admin/login', '/api/admin/dashboard']
   }));
 
   app.get('/api/health', (_req, res) => {
@@ -250,9 +250,21 @@ export function createApp(db) {
     if (!positiveInteger(req.params.id)) return res.status(400).json({ error: 'id must be a positive integer' });
     const statuses = ['Confirmed', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
     if (!statuses.includes(req.body?.status)) return res.status(400).json({ error: 'Choose a valid order status' });
-    const result = db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(req.body.status, Number(req.params.id));
-    if (!Number(result.changes)) return res.status(404).json({ error: 'Order not found' });
-    res.json({ message: 'Order status updated' });
+    const orderId = Number(req.params.id);
+    const order = db.prepare('SELECT status FROM orders WHERE id = ?').get(orderId);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (order.status === req.body.status) return res.json({ message: 'Order status is already current' });
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(req.body.status, orderId);
+      db.prepare('INSERT INTO order_status_history(order_id,status,note) VALUES (?,?,?)')
+        .run(orderId, req.body.status, `Order marked ${req.body.status.toLowerCase()}`);
+      db.exec('COMMIT');
+      res.json({ message: 'Order status updated' });
+    } catch (error) {
+      try { db.exec('ROLLBACK'); } catch {}
+      throw error;
+    }
   });
 
   app.get('/api/admin/customers', requireAdmin, (_req, res) => {
@@ -274,6 +286,21 @@ export function createApp(db) {
       JOIN products p ON p.id = oi.product_id JOIN variants v ON v.id = oi.variant_id
       WHERE oi.order_id = ? ORDER BY oi.id`);
     res.json({ data: orders.map(order => ({ ...order, items: itemQuery.all(order.id) })) });
+  });
+
+  app.get('/api/orders/:id/tracking', (req, res) => {
+    if (!positiveInteger(req.params.id)) return res.status(400).json({ error: 'Enter a valid order number' });
+    if (!validEmail(req.query.email)) return res.status(400).json({ error: 'Enter the email used for the order' });
+    const order = db.prepare(`SELECT o.id, o.status, o.total_cents, o.shipping_name, o.city, o.created_at
+      FROM orders o JOIN users u ON u.id = o.user_id WHERE o.id = ? AND u.email = ?`)
+      .get(Number(req.params.id), normaliseEmail(req.query.email));
+    if (!order) return res.status(404).json({ error: 'No order matches that number and email address' });
+    const items = db.prepare(`SELECT oi.quantity, p.name, v.size, v.colour FROM order_items oi
+      JOIN products p ON p.id = oi.product_id JOIN variants v ON v.id = oi.variant_id
+      WHERE oi.order_id = ? ORDER BY oi.id`).all(order.id);
+    const history = db.prepare(`SELECT status, note, created_at FROM order_status_history
+      WHERE order_id = ? ORDER BY id`).all(order.id);
+    res.json({ order: { ...order, items, history } });
   });
 
   app.post('/api/orders', (req, res, next) => {
@@ -319,6 +346,8 @@ export function createApp(db) {
         }
         insertItem.run(orderId, item.product_id, item.id, item.quantity, item.price_cents);
       }
+      db.prepare('INSERT INTO order_status_history(order_id,status,note) VALUES (?, ?, ?)')
+        .run(orderId, 'Confirmed', 'Order received and confirmed');
       db.exec('COMMIT');
       res.status(201).json({
         order: { id: orderId, status: 'Confirmed', subtotal_cents: subtotal, shipping_cents: shipping, total_cents: subtotal + shipping },

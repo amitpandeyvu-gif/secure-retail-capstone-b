@@ -31,6 +31,9 @@
         <button type="submit" aria-label="Search">⌕</button>
       </form>
       <div class="header-actions">
+        <button class="header-action" id="track-button" type="button">
+          <span class="action-icon">⌖</span><span>Track</span>
+        </button>
         <a class="header-action" href="/admin.html">
           <span class="action-icon">⚙</span><span>Admin</span>
         </a>
@@ -53,6 +56,7 @@
         <button data-category="2">Hoodies</button>
         <button data-category="3">Accessories</button>
         <a href="#benefits">Why shop with us</a>
+        <button id="nav-track" type="button">Track order</button>
         <a class="sale-link" href="#products">Trending now</a>
       </div>
     </nav>
@@ -152,7 +156,7 @@
     <div class="shell footer-grid">
       <div><a class="brand brand-footer" href="#top"><span class="brand-mark">PC</span><span>POP CULTURE</span></a><p>Original clothing for collectors, players and everyday fans.</p></div>
       <div><h3>Shop</h3><a href="#products">New in</a><a href="#products">Graphic tees</a><a href="#products">Hoodies</a><a href="#products">Accessories</a></div>
-      <div><h3>Help</h3><a href="#benefits">Delivery</a><a href="#benefits">Returns</a><a href="#benefits">Size guide</a><button id="footer-orders" type="button">My orders</button></div>
+      <div><h3>Help</h3><a href="#benefits">Delivery</a><a href="#benefits">Returns</a><a href="#benefits">Size guide</a><button id="footer-track" type="button">Track an order</button><button id="footer-orders" type="button">My orders</button></div>
       <div><h3>Project</h3><a href="/admin.html">Admin portal</a><a href="/api" target="_blank" rel="noreferrer">API overview</a><a href="/api/health" target="_blank" rel="noreferrer">System status</a><p>Capstone B · Sprint 3</p></div>
     </div>
     <div class="shell footer-bottom"><span>© 2026 Pop Culture Clothing</span><span>Demo storefront · AUD</span></div>
@@ -183,6 +187,26 @@
   <dialog class="modal account-modal" id="account-modal">
     <button class="close-button modal-close" data-dialog-close aria-label="Close account">×</button>
     <div class="modal-content" id="account-content"></div>
+  </dialog>
+
+  <dialog class="modal tracking-modal" id="tracking-modal">
+    <button class="close-button modal-close" data-dialog-close aria-label="Close order tracking">×</button>
+    <div class="tracking-layout">
+      <section class="tracking-search">
+        <p class="eyebrow">Order tracking</p>
+        <h2>Where is my order?</h2>
+        <p>Enter the order number and email address shown on your confirmation.</p>
+        <form class="account-form" id="tracking-form">
+          <label>Order number<input name="order_id" inputmode="numeric" pattern="[0-9]+" required placeholder="For example, 12"></label>
+          <label>Order email<input name="email" type="email" required maxlength="254" autocomplete="email" placeholder="you@example.com"></label>
+          <p class="form-error" id="tracking-error" role="alert"></p>
+          <button class="button button-dark" type="submit">Track order</button>
+        </form>
+      </section>
+      <section class="tracking-result" id="tracking-result" aria-live="polite">
+        <div class="tracking-placeholder"><span>⌖</span><h3>Live order progress</h3><p>Your delivery stages will appear here.</p></div>
+      </section>
+    </div>
   </dialog>
 
   <dialog class="modal checkout-modal" id="checkout-modal">

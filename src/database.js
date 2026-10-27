@@ -13,6 +13,10 @@ export function openDatabase(filename = process.env.DATABASE_PATH || defaultData
   try {
     const exists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='products'").get();
     if (!exists) throw new Error('Database not initialised. Run npm run db:init first.');
+    db.exec(readFileSync(resolve(projectRoot, 'database/schema.sql'), 'utf8'));
+    db.exec(`INSERT INTO order_status_history(order_id,status,note,created_at)
+      SELECT o.id,o.status,'Order status recorded',o.created_at FROM orders o
+      WHERE NOT EXISTS (SELECT 1 FROM order_status_history h WHERE h.order_id = o.id)`);
   } catch (error) {
     db.close();
     throw error;

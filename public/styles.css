@@ -194,6 +194,40 @@ img { display: block; width: 100%; }
 .order-card h3 { margin: 0; font-size: 1rem; }
 .order-card p { margin: 4px 0 0; color: var(--muted); font-size: .78rem; }
 .order-status { color: var(--success); font-weight: 700; }
+.order-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 13px; }
+.track-order-link { border: 0; border-bottom: 1px solid currentColor; padding: 3px 0; color: var(--accent-dark); background: none; cursor: pointer; font-weight: 700; }
+.tracking-modal { width: min(960px, calc(100% - 32px)); }
+.tracking-layout { min-height: 570px; display: grid; grid-template-columns: .85fr 1.15fr; }
+.tracking-search { padding: 58px 46px; border-right: 1px solid var(--line); }
+.tracking-search h2 { margin: 0 0 10px; font: 600 clamp(2rem, 4vw, 3rem)/1.05 "Space Grotesk", sans-serif; }
+.tracking-search > p:not(.eyebrow) { color: var(--muted); line-height: 1.6; }
+.tracking-result { padding: 58px 46px; background: var(--soft); }
+.tracking-placeholder { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); text-align: center; }
+.tracking-placeholder > span:first-child { width: 56px; height: 56px; display: grid; place-items: center; margin-bottom: 10px; border-radius: 50%; color: white; background: var(--ink); font-size: 1.4rem; }
+.tracking-placeholder h3 { margin: 8px 0 0; color: var(--ink); }
+.tracking-placeholder p { margin: 6px 0; }
+.tracking-summary { padding-bottom: 20px; border-bottom: 1px solid #d8d6cf; }
+.tracking-summary > div { display: flex; align-items: baseline; justify-content: space-between; gap: 15px; }
+.tracking-summary h3 { margin: 0; font: 600 2rem "Space Grotesk", sans-serif; }
+.tracking-summary p:last-child { color: var(--muted); font-size: .8rem; }
+.tracking-timeline { padding-block: 22px; }
+.tracking-step { position: relative; display: grid; grid-template-columns: 35px 1fr; gap: 12px; min-height: 70px; opacity: .48; }
+.tracking-step::before { content: ""; position: absolute; left: 16px; top: 31px; bottom: -1px; width: 2px; background: #ccc; }
+.tracking-step:last-child::before { display: none; }
+.step-marker { position: relative; z-index: 1; width: 34px; height: 34px; display: grid; place-items: center; border: 2px solid #bbb; border-radius: 50%; background: var(--soft); font-size: .75rem; font-weight: 800; }
+.tracking-step strong,.tracking-step small { display: block; }
+.tracking-step small { margin-top: 4px; color: var(--muted); font-size: .7rem; line-height: 1.45; }
+.tracking-step.complete,.tracking-step.current { opacity: 1; }
+.tracking-step.complete .step-marker { border-color: var(--success); color: white; background: var(--success); }
+.tracking-step.complete::before { background: var(--success); }
+.tracking-step.current .step-marker { border-color: var(--accent); color: var(--accent); }
+.tracking-cancelled { display: grid; gap: 5px; margin: 24px 0; padding: 16px; border-left: 3px solid #9e2d21; color: #7c241b; background: #fff0ed; }
+.tracking-items { padding-top: 18px; border-top: 1px solid #d8d6cf; }
+.tracking-items h4 { margin: 0 0 10px; }
+.tracking-items p { margin: 7px 0; font-size: .78rem; }
+.tracking-items small { display: block; color: var(--muted); }
+.tracking-loader { border: 3px solid #ddd; border-top-color: white; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .checkout-modal { width: min(1080px, calc(100% - 32px)); }
 .checkout-layout { display: grid; grid-template-columns: 1.15fr .85fr; }
 .checkout-form { padding: 54px 48px; }
@@ -235,6 +269,8 @@ img { display: block; width: 100%; }
   .footer-grid { grid-template-columns: 1.5fr 1fr 1fr; }
   .footer-grid > div:last-child { grid-column: 2; }
   .product-detail-grid, .checkout-layout { grid-template-columns: 1fr; }
+  .tracking-layout { grid-template-columns: 1fr; }
+  .tracking-search { border-right: 0; border-bottom: 1px solid var(--line); }
   .detail-image { min-height: 540px; }
 }
 
@@ -264,6 +300,8 @@ img { display: block; width: 100%; }
   .newsletter form { flex-direction: column; border: 0; gap: 10px; }
   .newsletter input { border-bottom: 2px solid white; }
   .newsletter button { align-self: flex-start; padding: 12px 0; }
+  .tracking-search, .tracking-result { padding: 45px 24px; }
+  .tracking-result { min-height: 470px; }
   .footer-grid { grid-template-columns: 1fr 1fr; gap: 38px 24px; }
   .footer-grid > div:first-child { grid-column: 1 / -1; }
   .footer-grid > div:last-child { grid-column: auto; }

@@ -293,8 +293,53 @@ async function loadOrders() {
   list.innerHTML = '<p>Loading orders…</p>';
   try {
     const { data } = await api(`/api/orders?email=${encodeURIComponent(state.user.email)}`);
-    list.innerHTML = data.length ? data.map(order => `<article class="order-card"><header><div><h3>Order #${order.id}</h3><p>${new Date(`${order.created_at}Z`).toLocaleString('en-AU')}</p></div><span class="order-status">${escapeHTML(order.status)}</span></header><p>${order.items.map(item => `${item.quantity}× ${escapeHTML(item.name)} (${escapeHTML(item.size)})`).join('<br>')}</p><strong>${money(order.total_cents)}</strong></article>`).join('') : '<p>No orders yet. Your completed demo orders will appear here.</p>';
+    list.innerHTML = data.length ? data.map(order => `<article class="order-card"><header><div><h3>Order #${order.id}</h3><p>${new Date(`${order.created_at}Z`).toLocaleString('en-AU')}</p></div><span class="order-status">${escapeHTML(order.status)}</span></header><p>${order.items.map(item => `${item.quantity}× ${escapeHTML(item.name)} (${escapeHTML(item.size)})`).join('<br>')}</p><div class="order-card-footer"><strong>${money(order.total_cents)}</strong><button class="track-order-link" type="button" data-track-order="${order.id}">Track order →</button></div></article>`).join('') : '<p>No orders yet. Your completed demo orders will appear here.</p>';
   } catch (error) { list.innerHTML = `<p>${escapeHTML(error.message)}</p>`; }
+}
+
+function trackingPlaceholder() {
+  return '<div class="tracking-placeholder"><span>⌖</span><h3>Live order progress</h3><p>Your delivery stages will appear here.</p></div>';
+}
+
+function openTracking(orderId = '') {
+  const form = $('#tracking-form');
+  form.reset();
+  form.elements.order_id.value = orderId;
+  if (state.user) form.elements.email.value = state.user.email;
+  $('#tracking-error').textContent = '';
+  $('#tracking-result').innerHTML = trackingPlaceholder();
+  $('#tracking-modal').showModal();
+  if (orderId && state.user) fetchTracking(orderId, state.user.email);
+}
+
+async function fetchTracking(orderId, email) {
+  const result = $('#tracking-result');
+  const error = $('#tracking-error');
+  error.textContent = '';
+  result.innerHTML = '<div class="tracking-placeholder"><span class="tracking-loader"></span><h3>Checking your order…</h3></div>';
+  try {
+    const { order } = await api(`/api/orders/${encodeURIComponent(orderId)}/tracking?email=${encodeURIComponent(email)}`);
+    const stages = ['Confirmed', 'Packed', 'Shipped', 'Delivered'];
+    const currentIndex = stages.indexOf(order.status);
+    const history = new Map(order.history.map(entry => [entry.status, entry]));
+    const timeline = order.status === 'Cancelled'
+      ? `<div class="tracking-cancelled"><strong>Order cancelled</strong><span>This order is no longer being prepared for delivery.</span></div>`
+      : `<div class="tracking-timeline">${stages.map((stage, index) => {
+          const entry = history.get(stage);
+          const stateClass = index < currentIndex ? 'complete' : index === currentIndex ? 'current' : '';
+          return `<div class="tracking-step ${stateClass}"><span class="step-marker">${index < currentIndex ? '✓' : index + 1}</span><div><strong>${stage}</strong><small>${entry ? `${escapeHTML(entry.note)} · ${new Date(`${entry.created_at}Z`).toLocaleString('en-AU')}` : index === currentIndex ? 'Current order stage' : 'Waiting for update'}</small></div></div>`;
+        }).join('')}</div>`;
+    result.innerHTML = `<div class="tracking-summary"><p class="eyebrow">Order #${order.id}</p><div><h3>${escapeHTML(order.status)}</h3><strong>${money(order.total_cents)}</strong></div><p>Delivering to ${escapeHTML(order.shipping_name)} in ${escapeHTML(order.city)}.</p></div>${timeline}<div class="tracking-items"><h4>Order contents</h4>${order.items.map(item => `<p><span>${item.quantity}× ${escapeHTML(item.name)}<small>${escapeHTML(item.size)} · ${escapeHTML(item.colour)}</small></span></p>`).join('')}</div>`;
+  } catch (requestError) {
+    result.innerHTML = trackingPlaceholder();
+    error.textContent = requestError.message;
+  }
+}
+
+function trackOrder(event) {
+  event.preventDefault();
+  const form = new FormData(event.currentTarget);
+  fetchTracking(form.get('order_id'), form.get('email'));
 }
 
 function openCheckout() {
@@ -402,6 +447,16 @@ $('#checkout-button').addEventListener('click', openCheckout);
 $('#checkout-form').addEventListener('submit', placeOrder);
 $('#account-button').addEventListener('click', openAccount);
 $('#footer-orders').addEventListener('click', openAccount);
+$('#track-button').addEventListener('click', () => openTracking());
+$('#nav-track').addEventListener('click', () => openTracking());
+$('#footer-track').addEventListener('click', () => openTracking());
+$('#tracking-form').addEventListener('submit', trackOrder);
+$('#account-content').addEventListener('click', event => {
+  const button = event.target.closest('[data-track-order]');
+  if (!button) return;
+  $('#account-modal').close();
+  openTracking(button.dataset.trackOrder);
+});
 
 $('#mobile-menu').addEventListener('click', event => {
   const open = $('#primary-nav').classList.toggle('open');

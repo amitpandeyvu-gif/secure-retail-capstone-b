@@ -6,6 +6,9 @@ The storefront provides a responsive shopping experience backed by the existing
 Express and SQLite application. Customers can browse the live product catalogue,
 search and filter products, sort results, choose a size and colour, save favourites,
 manage bag quantities and complete a demonstration checkout.
+Customers can also track an order using its order number and checkout email. The
+tracking view shows Confirmed, Packed, Shipped and Delivered stages, item details
+and status timestamps recorded when an administrator changes fulfilment status.
 
 Any valid email address can be used to create or reopen a demonstration account.
 The account view shows orders placed with that email. This is intentionally a
@@ -38,6 +41,8 @@ SQLite database. The protected `/admin.html` portal includes summary metrics,
 low-stock alerts, recent order activity, product creation and editing, live stock
 updates, fulfilment status controls and customer summaries. Administrator API
 requests require a short-lived bearer token returned by the separate admin login.
+Every fulfilment change creates a database history record that is shown immediately
+in the customer tracking timeline.
 
 The default local assessment credentials are documented in `.env.example` and can
 be replaced through `ADMIN_EMAIL` and `ADMIN_PASSWORD` environment variables.

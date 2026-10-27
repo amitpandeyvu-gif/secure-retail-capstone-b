@@ -11,6 +11,7 @@ test('database constraints and seed data', () => {
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM variants').get().n, 11);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users').get().n, 0);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM orders').get().n, 0);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM order_status_history').get().n, 0);
     assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
     assert.throws(() => db.prepare('UPDATE products SET price_cents = -1 WHERE id = 1').run());
     assert.throws(() => db.prepare('UPDATE variants SET stock = -1 WHERE id = 1').run());
@@ -69,8 +70,16 @@ test('HTTP routes query SQLite and reject invalid requests', async () => {
     assert.equal(order[1].order.total_cents, 6985);
     assert.equal((await get('/api/orders?email=amit%40example.com'))[1].data.length, 1);
     assert.equal(db.prepare('SELECT stock FROM variants WHERE id = 1').get().stock, 28);
+    const tracking = await get(`/api/orders/${order[1].order.id}/tracking?email=amit%40example.com`);
+    assert.equal(tracking[0], 200);
+    assert.equal(tracking[1].order.status, 'Confirmed');
+    assert.equal(tracking[1].order.history[0].status, 'Confirmed');
+    assert.equal((await get(`/api/orders/${order[1].order.id}/tracking?email=wrong%40example.com`))[0], 404);
     assert.equal((await admin('/api/admin/orders'))[1].data.length, 1);
     assert.equal((await admin(`/api/admin/orders/${order[1].order.id}`, 'PATCH', { status: 'Packed' }))[0], 200);
+    const packedTracking = await get(`/api/orders/${order[1].order.id}/tracking?email=amit%40example.com`);
+    assert.equal(packedTracking[1].order.status, 'Packed');
+    assert.deepEqual(packedTracking[1].order.history.map(item => item.status), ['Confirmed', 'Packed']);
     assert.equal((await admin('/api/admin/customers'))[1].data[0].order_count, 1);
     for (const path of ['/api/products/999', '/api/products/999/variants', '/missing']) {
       if (path === '/missing') {
