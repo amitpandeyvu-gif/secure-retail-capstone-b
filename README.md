@@ -1,9 +1,26 @@
 # Pop Culture Clothing Storefront
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/amitpandeyvu-gif/secure-retail-capstone-b?ref=codex%2Fsprint3-backend)
+[![Backend tests](https://github.com/amitpandeyvu-gif/secure-retail-capstone-b/actions/workflows/ci.yml/badge.svg?branch=codex%2Fsprint3-backend)](https://github.com/amitpandeyvu-gif/secure-retail-capstone-b/actions/workflows/ci.yml)
+
 Full-stack clothing storefront for the Pop Culture Clothing capstone. The project
 uses accessible HTML, responsive CSS and browser JavaScript with an Express 5 API
 and SQLite through Node's built-in `node:sqlite` module. No separate database
 service is needed.
+
+## Run from GitHub
+
+Select **Open in GitHub Codespaces** above, choose **Create codespace**, and wait
+for the setup to finish. The repository automatically installs its packages,
+creates the SQLite database, runs the tests, starts the Node server and forwards
+port 3000. Select **Open in Browser** if the storefront preview does not open
+automatically. Add `/admin.html` to the forwarded website address for the admin
+portal.
+
+GitHub Pages is not used because this application requires an Express server and
+a writable SQLite database. Codespaces provides the required Node environment
+directly from the GitHub repository. Data remains inside that codespace and may
+need to be recreated if the codespace is deleted.
 
 ## Run locally
 

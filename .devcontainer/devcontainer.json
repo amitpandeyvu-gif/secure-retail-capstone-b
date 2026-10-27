@@ -1,0 +1,24 @@
+{
+  "name": "Pop Culture Clothing",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-24-bookworm",
+  "containerEnv": {
+    "HOST": "0.0.0.0",
+    "PORT": "3000"
+  },
+  "postCreateCommand": "npm ci && npm run db:init && npm test",
+  "postAttachCommand": "npm start",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Pop Culture Clothing",
+      "onAutoForward": "openPreview"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "qwtel.sqlite-viewer"
+      ]
+    }
+  }
+}
