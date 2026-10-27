@@ -1,5 +1,6 @@
 import express from 'express';
 import { resolve } from 'node:path';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { projectRoot } from './database.js';
 
 function positiveInteger(value) {
@@ -26,8 +27,21 @@ function upsertUser(db, email, name) {
   return db.prepare('SELECT id, email, name, created_at FROM users WHERE email = ?').get(email);
 }
 
+function safeMatch(left, right) {
+  const a = Buffer.from(String(left));
+  const b = Buffer.from(String(right));
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+function validMoney(value) {
+  return Number.isInteger(value) && value >= 0 && value <= 100000000;
+}
+
 export function createApp(db) {
   const app = express();
+  const adminSessions = new Map();
+  const adminEmail = (process.env.ADMIN_EMAIL || 'admin@popculture.com').toLowerCase();
+  const adminPassword = process.env.ADMIN_PASSWORD || 'Admin123!';
   app.disable('x-powered-by');
   app.use(express.json({ limit: '32kb' }));
   app.use((_req, res, next) => {
@@ -40,7 +54,7 @@ export function createApp(db) {
     project: 'Pop Culture Clothing',
     sprint: 3,
     message: 'Storefront and SQLite API are running.',
-    endpoints: ['/api/health', '/api/categories', '/api/products', '/api/auth/login', '/api/orders']
+    endpoints: ['/api/health', '/api/categories', '/api/products', '/api/auth/login', '/api/orders', '/api/admin/login', '/api/admin/dashboard']
   }));
 
   app.get('/api/health', (_req, res) => {
@@ -94,6 +108,158 @@ export function createApp(db) {
     if (!name) return res.status(400).json({ error: 'Name must be between 1 and 80 characters' });
     const user = upsertUser(db, email, name);
     res.json({ user, message: `Welcome, ${user.name}` });
+  });
+
+  function requireAdmin(req, res, next) {
+    const token = req.get('authorization')?.replace(/^Bearer\s+/i, '');
+    const session = token && adminSessions.get(token);
+    if (!session || session.expiresAt < Date.now()) {
+      if (token) adminSessions.delete(token);
+      return res.status(401).json({ error: 'Administrator sign-in required' });
+    }
+    req.admin = session;
+    next();
+  }
+
+  app.post('/api/admin/login', (req, res) => {
+    const email = validEmail(req.body?.email) ? normaliseEmail(req.body.email) : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+    if (!safeMatch(email, adminEmail) || !safeMatch(password, adminPassword)) {
+      return res.status(401).json({ error: 'Incorrect administrator email or password' });
+    }
+    const token = randomUUID();
+    const expiresAt = Date.now() + (8 * 60 * 60 * 1000);
+    adminSessions.set(token, { email, expiresAt });
+    res.json({ token, admin: { email }, expires_at: new Date(expiresAt).toISOString() });
+  });
+
+  app.post('/api/admin/logout', requireAdmin, (req, res) => {
+    const token = req.get('authorization').replace(/^Bearer\s+/i, '');
+    adminSessions.delete(token);
+    res.json({ message: 'Signed out' });
+  });
+
+  app.get('/api/admin/dashboard', requireAdmin, (_req, res) => {
+    const summary = db.prepare(`SELECT
+      (SELECT COUNT(*) FROM products) AS products,
+      (SELECT COUNT(*) FROM users) AS customers,
+      (SELECT COUNT(*) FROM orders) AS orders,
+      (SELECT COALESCE(SUM(total_cents),0) FROM orders WHERE status != 'Cancelled') AS revenue_cents,
+      (SELECT COUNT(*) FROM variants WHERE stock <= 5) AS low_stock`).get();
+    const recentOrders = db.prepare(`SELECT o.id, o.status, o.total_cents, o.created_at,
+      u.name AS customer_name, u.email FROM orders o JOIN users u ON u.id = o.user_id
+      ORDER BY o.id DESC LIMIT 6`).all();
+    const lowStock = db.prepare(`SELECT v.id AS variant_id, p.id AS product_id, p.name, p.sku,
+      v.size, v.colour, v.stock FROM variants v JOIN products p ON p.id = v.product_id
+      WHERE v.stock <= 5 ORDER BY v.stock, p.name LIMIT 8`).all();
+    res.json({ summary, recent_orders: recentOrders, low_stock: lowStock });
+  });
+
+  app.get('/api/admin/products', requireAdmin, (_req, res) => {
+    const products = db.prepare(productSelect + ' ORDER BY p.id DESC').all();
+    const variants = db.prepare('SELECT id, product_id, size, colour, stock FROM variants ORDER BY id').all();
+    res.json({ data: products.map(product => ({ ...product, variants: variants.filter(item => item.product_id === product.id) })) });
+  });
+
+  app.post('/api/admin/products', requireAdmin, (req, res, next) => {
+    const categoryId = Number(req.body?.category_id);
+    const sku = cleanText(req.body?.sku, 3, 40)?.toUpperCase();
+    const name = cleanText(req.body?.name, 1, 120);
+    const description = cleanText(req.body?.description, 1, 1000);
+    const material = cleanText(req.body?.material, 1, 160);
+    const sizeGuide = cleanText(req.body?.size_guide, 1, 240);
+    const priceCents = Number(req.body?.price_cents);
+    const size = cleanText(req.body?.size, 1, 20)?.toUpperCase();
+    const colour = cleanText(req.body?.colour, 1, 40);
+    const stock = Number(req.body?.stock);
+    const sizes = ['XS', 'S', 'M', 'L', 'XL', 'ONE SIZE'];
+    if (!Number.isInteger(categoryId) || !db.prepare('SELECT 1 FROM categories WHERE id = ?').get(categoryId)) return res.status(400).json({ error: 'Choose a valid category' });
+    if (!sku || !/^[A-Z0-9-]+$/.test(sku) || !name || !description || !material || !sizeGuide || !validMoney(priceCents)) return res.status(400).json({ error: 'Complete all product details with a valid SKU and price' });
+    if (!sizes.includes(size) || !colour || !Number.isInteger(stock) || stock < 0 || stock > 100000) return res.status(400).json({ error: 'Enter a valid initial size, colour and stock quantity' });
+    try {
+      db.exec('BEGIN IMMEDIATE');
+      const result = db.prepare(`INSERT INTO products(category_id,sku,name,description,price_cents,material,size_guide)
+        VALUES (?,?,?,?,?,?,?)`).run(categoryId, sku, name, description, priceCents, material, sizeGuide);
+      const productId = Number(result.lastInsertRowid);
+      db.prepare('INSERT INTO variants(product_id,size,colour,stock) VALUES (?,?,?,?)').run(productId, size, colour, stock);
+      db.exec('COMMIT');
+      res.status(201).json({ id: productId, message: 'Product created' });
+    } catch (error) {
+      try { db.exec('ROLLBACK'); } catch {}
+      if (/unique/i.test(error.message)) return res.status(409).json({ error: 'That SKU or product option already exists' });
+      next(error);
+    }
+  });
+
+  app.put('/api/admin/products/:id', requireAdmin, (req, res, next) => {
+    if (!positiveInteger(req.params.id)) return res.status(400).json({ error: 'id must be a positive integer' });
+    const categoryId = Number(req.body?.category_id);
+    const sku = cleanText(req.body?.sku, 3, 40)?.toUpperCase();
+    const name = cleanText(req.body?.name, 1, 120);
+    const description = cleanText(req.body?.description, 1, 1000);
+    const material = cleanText(req.body?.material, 1, 160);
+    const sizeGuide = cleanText(req.body?.size_guide, 1, 240);
+    const priceCents = Number(req.body?.price_cents);
+    if (!Number.isInteger(categoryId) || !db.prepare('SELECT 1 FROM categories WHERE id = ?').get(categoryId) || !sku || !/^[A-Z0-9-]+$/.test(sku) || !name || !description || !material || !sizeGuide || !validMoney(priceCents)) {
+      return res.status(400).json({ error: 'Complete all product details with valid values' });
+    }
+    try {
+      const result = db.prepare(`UPDATE products SET category_id=?, sku=?, name=?, description=?, price_cents=?, material=?, size_guide=? WHERE id=?`)
+        .run(categoryId, sku, name, description, priceCents, material, sizeGuide, Number(req.params.id));
+      if (!Number(result.changes)) return res.status(404).json({ error: 'Product not found' });
+      res.json({ message: 'Product updated' });
+    } catch (error) {
+      if (/unique/i.test(error.message)) return res.status(409).json({ error: 'That SKU already exists' });
+      next(error);
+    }
+  });
+
+  app.delete('/api/admin/products/:id', requireAdmin, (req, res, next) => {
+    if (!positiveInteger(req.params.id)) return res.status(400).json({ error: 'id must be a positive integer' });
+    try {
+      db.exec('BEGIN IMMEDIATE');
+      db.prepare('DELETE FROM variants WHERE product_id = ?').run(Number(req.params.id));
+      const result = db.prepare('DELETE FROM products WHERE id = ?').run(Number(req.params.id));
+      if (!Number(result.changes)) throw Object.assign(new Error('Product not found'), { status: 404 });
+      db.exec('COMMIT');
+      res.json({ message: 'Product deleted' });
+    } catch (error) {
+      try { db.exec('ROLLBACK'); } catch {}
+      if (error.status === 404) return res.status(404).json({ error: error.message });
+      if (/foreign key/i.test(error.message)) return res.status(409).json({ error: 'Products included in existing orders cannot be deleted' });
+      next(error);
+    }
+  });
+
+  app.patch('/api/admin/variants/:id', requireAdmin, (req, res) => {
+    if (!positiveInteger(req.params.id)) return res.status(400).json({ error: 'id must be a positive integer' });
+    const stock = Number(req.body?.stock);
+    if (!Number.isInteger(stock) || stock < 0 || stock > 100000) return res.status(400).json({ error: 'Stock must be a whole number from 0 to 100000' });
+    const result = db.prepare('UPDATE variants SET stock = ? WHERE id = ?').run(stock, Number(req.params.id));
+    if (!Number(result.changes)) return res.status(404).json({ error: 'Variant not found' });
+    res.json({ message: 'Stock updated' });
+  });
+
+  app.get('/api/admin/orders', requireAdmin, (_req, res) => {
+    const orders = db.prepare(`SELECT o.*, u.name AS customer_name, u.email FROM orders o
+      JOIN users u ON u.id = o.user_id ORDER BY o.id DESC`).all();
+    res.json({ data: orders });
+  });
+
+  app.patch('/api/admin/orders/:id', requireAdmin, (req, res) => {
+    if (!positiveInteger(req.params.id)) return res.status(400).json({ error: 'id must be a positive integer' });
+    const statuses = ['Confirmed', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
+    if (!statuses.includes(req.body?.status)) return res.status(400).json({ error: 'Choose a valid order status' });
+    const result = db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(req.body.status, Number(req.params.id));
+    if (!Number(result.changes)) return res.status(404).json({ error: 'Order not found' });
+    res.json({ message: 'Order status updated' });
+  });
+
+  app.get('/api/admin/customers', requireAdmin, (_req, res) => {
+    const customers = db.prepare(`SELECT u.id, u.name, u.email, u.created_at, COUNT(o.id) AS order_count,
+      COALESCE(SUM(CASE WHEN o.status != 'Cancelled' THEN o.total_cents ELSE 0 END),0) AS spent_cents
+      FROM users u LEFT JOIN orders o ON o.user_id = u.id GROUP BY u.id ORDER BY u.id DESC`).all();
+    res.json({ data: customers });
   });
 
   app.get('/api/orders', (req, res) => {

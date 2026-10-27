@@ -31,9 +31,22 @@ confirmed order so the complete storefront flow can be demonstrated safely.
 - The interface includes keyboard focus support, labels, semantic page regions and
   reduced-motion support.
 
+## Administration side
+
+The customer store and administration portal use the same Express service and
+SQLite database. The protected `/admin.html` portal includes summary metrics,
+low-stock alerts, recent order activity, product creation and editing, live stock
+updates, fulfilment status controls and customer summaries. Administrator API
+requests require a short-lived bearer token returned by the separate admin login.
+
+The default local assessment credentials are documented in `.env.example` and can
+be replaced through `ADMIN_EMAIL` and `ADMIN_PASSWORD` environment variables.
+Changing catalogue or stock information in the portal changes what the customer
+store receives from its API.
+
 ## Production improvements
 
 Before public deployment, replace the email-only demonstration login with verified
-authentication, connect a compliant payment provider, add server-managed sessions,
-rate limiting, CSRF protection, inventory administration, delivery integrations and
+authentication, connect a compliant payment provider, persist administrator sessions,
+rate limiting, CSRF protection, role-based access, delivery integrations and
 formal accessibility and security testing.

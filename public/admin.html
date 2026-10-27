@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Pop Culture Clothing administration portal">
+  <title>Admin · Pop Culture Clothing</title>
+  <link rel="stylesheet" href="/admin.css">
+  <script type="module" src="/admin.js"></script>
+</head>
+<body>
+  <div class="login-screen" id="login-screen">
+    <section class="login-card">
+      <a class="brand" href="/"><span>PC</span> POP CULTURE</a>
+      <p class="eyebrow">Administration portal</p>
+      <h1>Welcome back.</h1>
+      <p class="muted">Sign in to manage products, stock, customer orders and store activity.</p>
+      <form id="admin-login">
+        <label>Email address<input name="email" type="email" value="admin@popculture.com" autocomplete="username" required></label>
+        <label>Password<input name="password" type="password" value="Admin123!" autocomplete="current-password" required></label>
+        <p class="form-error" id="login-error" role="alert"></p>
+        <button class="button primary" type="submit">Sign in to dashboard</button>
+      </form>
+      <div class="demo-note"><strong>Assessment demo</strong><span>Default credentials are pre-filled. Set ADMIN_EMAIL and ADMIN_PASSWORD for another local login.</span></div>
+      <a class="back-link" href="/">← Return to customer store</a>
+    </section>
+    <aside class="login-art" aria-hidden="true"><div><small>STORE OPERATIONS</small><strong>Products.<br>Orders.<br>Customers.</strong></div></aside>
+  </div>
+
+  <div class="admin-app" id="admin-app" hidden>
+    <aside class="sidebar" id="sidebar">
+      <a class="brand brand-light" href="/"><span>PC</span> POP CULTURE</a>
+      <p class="nav-label">Workspace</p>
+      <nav aria-label="Administration navigation">
+        <button class="nav-item active" data-page="dashboard"><span>⌂</span> Dashboard</button>
+        <button class="nav-item" data-page="products"><span>◇</span> Products</button>
+        <button class="nav-item" data-page="orders"><span>▤</span> Orders</button>
+        <button class="nav-item" data-page="customers"><span>♙</span> Customers</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <a href="/" target="_blank"><span>↗</span> View customer store</a>
+        <button id="logout"><span>⇥</span> Sign out</button>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <button class="menu-button" id="menu-button" aria-label="Open navigation">☰</button>
+        <div><p class="eyebrow">Pop Culture Clothing</p><h1 id="page-title">Dashboard</h1></div>
+        <div class="admin-profile"><span>A</span><div><strong>Store Admin</strong><small id="admin-email"></small></div></div>
+      </header>
+
+      <div class="content">
+        <section class="page active" id="dashboard-page">
+          <div class="welcome"><div><p class="eyebrow">Store overview</p><h2>Good decisions start with clear data.</h2><p>Live information from the same SQLite database used by the customer store.</p></div><button class="button primary" data-open-product>+ Add product</button></div>
+          <div class="metric-grid" id="metrics"></div>
+          <div class="dashboard-grid">
+            <section class="panel"><div class="panel-heading"><div><p class="eyebrow">Latest activity</p><h2>Recent orders</h2></div><button class="text-button" data-page-link="orders">View all →</button></div><div id="recent-orders"></div></section>
+            <section class="panel"><div class="panel-heading"><div><p class="eyebrow">Attention required</p><h2>Low stock</h2></div><button class="text-button" data-page-link="products">Manage →</button></div><div id="low-stock"></div></section>
+          </div>
+        </section>
+
+        <section class="page" id="products-page">
+          <div class="page-actions"><div><p class="muted">Create products, edit catalogue details and update stock.</p></div><button class="button primary" data-open-product>+ Add product</button></div>
+          <section class="panel"><div class="table-toolbar"><label class="search-box">⌕<input id="product-search" type="search" placeholder="Search products or SKU"></label><span id="product-total"></span></div><div class="table-wrap"><table><thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock options</th><th>Total</th><th></th></tr></thead><tbody id="product-rows"></tbody></table></div></section>
+        </section>
+
+        <section class="page" id="orders-page">
+          <div class="page-actions"><p class="muted">Review customer purchases and keep fulfilment status current.</p></div>
+          <section class="panel"><div class="table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Date</th><th>Total</th><th>Status</th></tr></thead><tbody id="order-rows"></tbody></table></div></section>
+        </section>
+
+        <section class="page" id="customers-page">
+          <div class="page-actions"><p class="muted">Customer accounts created through the email sign-in flow.</p></div>
+          <section class="panel"><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Email</th><th>Joined</th><th>Orders</th><th>Total spent</th></tr></thead><tbody id="customer-rows"></tbody></table></div></section>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <dialog id="product-dialog">
+    <form method="dialog" class="dialog-shell" id="product-form">
+      <div class="dialog-heading"><div><p class="eyebrow">Catalogue editor</p><h2 id="product-dialog-title">Add product</h2></div><button class="close-button" value="cancel" aria-label="Close">×</button></div>
+      <input type="hidden" name="id">
+      <div class="form-grid">
+        <label>Product name<input name="name" required maxlength="120"></label>
+        <label>SKU<input name="sku" required maxlength="40" placeholder="TEE-NEW-001"></label>
+        <label>Category<select name="category_id" required><option value="1">Graphic Tees</option><option value="2">Hoodies</option><option value="3">Accessories</option></select></label>
+        <label>Price (AUD)<input name="price" type="number" min="0" step="0.01" required></label>
+        <label class="wide">Description<textarea name="description" rows="3" required maxlength="1000"></textarea></label>
+        <label>Material<input name="material" required maxlength="160"></label>
+        <label>Size guide<input name="size_guide" required maxlength="240"></label>
+      </div>
+      <fieldset id="initial-variant"><legend>Initial stock option</legend><div class="form-grid three"><label>Size<select name="size"><option>XS</option><option>S</option><option selected>M</option><option>L</option><option>XL</option><option>ONE SIZE</option></select></label><label>Colour<input name="colour" value="Black" maxlength="40"></label><label>Quantity<input name="stock" type="number" min="0" max="100000" value="10"></label></div></fieldset>
+      <p class="form-error" id="product-error" role="alert"></p>
+      <div class="dialog-actions"><button class="button" value="cancel">Cancel</button><button class="button primary" id="save-product" type="submit" value="default">Save product</button></div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

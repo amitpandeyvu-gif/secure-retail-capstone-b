@@ -46,6 +46,21 @@ test('HTTP routes query SQLite and reject invalid requests', async () => {
     assert.equal((await get('/api/products?q=%27%20OR%201%3D1--'))[1].count, 0);
     assert.equal((await post('/api/auth/login', { name: 'Amit Pandey', email: 'amit@example.com' }))[0], 200);
     assert.equal((await post('/api/auth/login', { name: 'Amit', email: 'not-an-email' }))[0], 400);
+    assert.equal((await get('/api/admin/dashboard'))[0], 401);
+    assert.equal((await post('/api/admin/login', { email: 'admin@popculture.com', password: 'wrong' }))[0], 401);
+    const adminLogin = await post('/api/admin/login', { email: 'admin@popculture.com', password: 'Admin123!' });
+    assert.equal(adminLogin[0], 200);
+    const admin = async (path, method = 'GET', body) => {
+      const response = await fetch(base + path, { method, headers: { authorization: `Bearer ${adminLogin[1].token}`, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+      return [response.status, await response.json()];
+    };
+    assert.equal((await admin('/api/admin/dashboard'))[1].summary.products, 6);
+    assert.equal((await admin('/api/admin/products'))[1].data.length, 6);
+    const created = await admin('/api/admin/products', 'POST', { category_id: 3, sku: 'CAP-TEST-009', name: 'Test Cap', description: 'Admin test product', price_cents: 1595, material: 'Cotton', size_guide: 'Adjustable', size: 'ONE SIZE', colour: 'Black', stock: 5 });
+    assert.equal(created[0], 201);
+    assert.equal((await admin(`/api/admin/variants/${db.prepare("SELECT id FROM variants WHERE product_id = ?").get(created[1].id).id}`, 'PATCH', { stock: 9 }))[0], 200);
+    assert.equal((await admin(`/api/admin/products/${created[1].id}`, 'PUT', { category_id: 3, sku: 'CAP-TEST-009', name: 'Updated Test Cap', description: 'Updated admin test product', price_cents: 1695, material: 'Cotton', size_guide: 'Adjustable' }))[0], 200);
+    assert.equal((await admin(`/api/admin/products/${created[1].id}`, 'DELETE'))[0], 200);
     const order = await post('/api/orders', {
       name: 'Amit Pandey', email: 'amit@example.com', address: '10 Example Street', city: 'Melbourne', postcode: '3000',
       items: [{ variant_id: 1, quantity: 2 }]
@@ -54,6 +69,9 @@ test('HTTP routes query SQLite and reject invalid requests', async () => {
     assert.equal(order[1].order.total_cents, 6985);
     assert.equal((await get('/api/orders?email=amit%40example.com'))[1].data.length, 1);
     assert.equal(db.prepare('SELECT stock FROM variants WHERE id = 1').get().stock, 28);
+    assert.equal((await admin('/api/admin/orders'))[1].data.length, 1);
+    assert.equal((await admin(`/api/admin/orders/${order[1].order.id}`, 'PATCH', { status: 'Packed' }))[0], 200);
+    assert.equal((await admin('/api/admin/customers'))[1].data[0].order_count, 1);
     for (const path of ['/api/products/999', '/api/products/999/variants', '/missing']) {
       if (path === '/missing') {
         const response = await fetch(base + path);
