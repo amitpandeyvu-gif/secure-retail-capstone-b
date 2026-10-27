@@ -33,19 +33,23 @@ interface Product {
   isNew?: boolean; isSale?: boolean; description: string;
 }
 
-interface CartItem { product: Product; quantity: number; size: string; color: string; }
+interface CartItem { cartItemId?: number; product: Product; quantity: number; size: string; color: string; }
 type UserRole = "guest" | "customer" | "admin";
 type AdminCustomer = typeof ADMIN_CUSTOMERS[number];
 type AdminOrder = typeof ADMIN_ORDERS[number];
+interface AdminApiOrder { id: number; orderNumber: string; customer: string; email: string; status: string; orderedAt: string; total: number; items: number; }
 type InventoryItem = typeof INVENTORY[number];
 type Promotion = typeof PROMOTIONS[number];
 type Review = typeof REVIEWS[number];
 
 interface SessionUser {
+  id?: number;
   name: string;
   email: string;
   role: Exclude<UserRole, "guest">;
 }
+
+interface StoreOrder { id: number; orderNumber: string; status: string; orderedAt: string; total: number; items: number; }
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -242,7 +246,7 @@ function CustomerNav({ page, navigate, cartCount, wishlistCount, isLoggedIn }: {
             ) : (
               <button onClick={() => setSearchOpen(true)}><Search size={20} className="text-gray-700" /></button>
             )}
-            <button onClick={() => navigate(isLoggedIn ? "dashboard" : "login")}><User size={20} className="text-gray-700" /></button>
+            <button onClick={() => navigate(isLoggedIn ? "dashboard" : "login")} className="flex items-center gap-2 text-[11px] font-semibold tracking-wider"><User size={20} className="text-gray-700" /><span className="hidden xl:inline">{isLoggedIn ? "MY ACCOUNT" : "SIGN IN"}</span></button>
             <button onClick={() => navigate("wishlist")} className="relative">
               <Heart size={20} className="text-gray-700" />
               {wishlistCount > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-black text-white text-[9px] rounded-full flex items-center justify-center">{wishlistCount}</span>}
@@ -285,7 +289,7 @@ function CustomerFooter({ navigate }: { navigate: (p: Page) => void }) {
           <p className="text-gray-400 text-sm leading-relaxed mb-6">Premium fashion rooted in culture. Designed for the bold, worn by the confident.</p>
           <div className="flex gap-4">
             {[Instagram, Facebook, Twitter, Youtube].map((Icon, i) => (
-              <button key={i} className="w-9 h-9 border border-white/20 rounded-full flex items-center justify-center hover:border-[#c8a97e] hover:text-[#c8a97e] transition-colors">
+              <button key={i} onClick={() => window.alert("Official social profiles will be connected before public launch.")} className="w-9 h-9 border border-white/20 rounded-full flex items-center justify-center hover:border-[#c8a97e] hover:text-[#c8a97e] transition-colors">
                 <Icon size={15} />
               </button>
             ))}
@@ -312,16 +316,16 @@ function CustomerFooter({ navigate }: { navigate: (p: Page) => void }) {
           <p className="text-sm text-gray-400 mb-4">Get early access to drops, exclusive offers, and style inspiration.</p>
           <div className="flex border border-white/20 rounded">
             <input className="flex-1 bg-transparent text-sm text-white px-4 py-2.5 outline-none placeholder:text-gray-600" placeholder="Your email" />
-            <button className="bg-white text-black text-xs font-semibold px-4 hover:bg-[#c8a97e] transition-colors">JOIN</button>
+            <button onClick={async e => { const input = e.currentTarget.previousElementSibling as HTMLInputElement; const response = await fetch("/api/newsletter", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: input.value }) }); const data = await response.json(); window.alert(response.ok ? "You are subscribed to PopCulture." : data.error); if (response.ok) input.value = ""; }} className="bg-white text-black text-xs font-semibold px-4 hover:bg-[#c8a97e] transition-colors">JOIN</button>
           </div>
         </div>
       </div>
       <div className="border-t border-white/10 px-6 py-6 max-w-[1400px] mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
         <p className="text-xs text-gray-500">&copy; 2026 Amit Pandey Studio. All rights reserved.</p>
         <div className="flex gap-6 text-xs text-gray-500">
-          <button className="hover:text-gray-300">Privacy Policy</button>
-          <button className="hover:text-gray-300">Terms of Service</button>
-          <button className="hover:text-gray-300">Cookie Settings</button>
+          <button onClick={() => navigate("faq")} className="hover:text-gray-300">Privacy Policy</button>
+          <button onClick={() => navigate("faq")} className="hover:text-gray-300">Terms of Service</button>
+          <button onClick={() => window.alert("Only essential sign-in cookies are used by this capstone website.")} className="hover:text-gray-300">Cookie Settings</button>
         </div>
       </div>
     </footer>
@@ -508,7 +512,7 @@ function HomePage({ navigate, products, onAddToCart, wishlist, onWishlistToggle,
         <p className="text-gray-600 mb-8 max-w-md mx-auto text-sm leading-relaxed">Get first access to new drops, members-only discounts, and curated style notes from our team.</p>
         <div className="flex max-w-md mx-auto border border-black/20">
           <input className="flex-1 bg-transparent text-sm px-5 py-4 outline-none placeholder:text-gray-400" placeholder="Enter your email address" />
-          <button className="bg-black text-white px-6 py-4 text-[11px] tracking-widest font-semibold hover:bg-gray-800 transition-colors">SUBSCRIBE</button>
+          <button onClick={async e => { const input = e.currentTarget.previousElementSibling as HTMLInputElement; const response = await fetch("/api/newsletter", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: input.value }) }); const data = await response.json(); window.alert(response.ok ? "Welcome to the PopCulture inner circle." : data.error); if (response.ok) input.value = ""; }} className="bg-black text-white px-6 py-4 text-[11px] tracking-widest font-semibold hover:bg-gray-800 transition-colors">SUBSCRIBE</button>
         </div>
         <p className="text-[11px] text-gray-400 mt-4">No spam, ever. Unsubscribe at any time.</p>
       </section>
@@ -536,16 +540,19 @@ function HomePage({ navigate, products, onAddToCart, wishlist, onWishlistToggle,
 
 // ─── Login Page ───────────────────────────────────────────────────────────────
 
-function LoginPage({ navigate, onLogin }: { navigate: (p: Page) => void; onLogin: (email: string, password: string) => { ok: boolean; message?: string } }) {
+function LoginPage({ navigate, onLogin }: { navigate: (p: Page) => void; onLogin: (email: string, password: string, remember: boolean) => Promise<{ ok: boolean; message?: string }> }) {
   const [show, setShow] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = onLogin(email, password);
+    setSubmitting(true);
+    const result = await onLogin(email, password, remember);
+    setSubmitting(false);
     setError(result.ok ? "" : result.message || "Unable to sign in with those details.");
   };
   return (
@@ -586,7 +593,7 @@ function LoginPage({ navigate, onLogin }: { navigate: (p: Page) => void; onLogin
               <span className="text-[11px] tracking-widest text-gray-400 uppercase">Role detected after login</span>
             </div>
             {error && <div className="border border-red-200 bg-red-50 text-red-700 rounded px-4 py-3 text-sm">{error}</div>}
-            <button type="submit" className="w-full bg-black text-white py-4 text-[12px] tracking-widest font-semibold hover:bg-gray-800 transition-colors">SIGN IN</button>
+            <button disabled={submitting} type="submit" className="w-full bg-black text-white py-4 text-[12px] tracking-widest font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50">{submitting ? "SIGNING IN…" : "SIGN IN"}</button>
           </form>
           <div className="mt-6 grid sm:grid-cols-2 gap-3">
             <div className="border border-[#e8e8e8] rounded p-4 bg-[#fafafa]">
@@ -597,7 +604,7 @@ function LoginPage({ navigate, onLogin }: { navigate: (p: Page) => void; onLogin
             <div className="border border-[#e8e8e8] rounded p-4 bg-[#fafafa]">
               <p className="text-[11px] tracking-widest uppercase text-gray-400 mb-1">Amit admin</p>
               <p className="text-sm font-semibold">amit@popculture.com</p>
-              <p className="text-xs text-gray-500 mt-1">amit123</p>
+              <p className="text-xs text-gray-500 mt-1">amit1234</p>
             </div>
           </div>
           <div className="relative my-8">
@@ -605,10 +612,10 @@ function LoginPage({ navigate, onLogin }: { navigate: (p: Page) => void; onLogin
             <div className="relative text-center text-xs text-gray-400 bg-white px-4 inline-block left-1/2 -translate-x-1/2">or continue with</div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <button className="border border-[#e8e8e8] rounded py-3 text-sm font-medium hover:bg-gray-50 flex items-center justify-center gap-2">
+            <button type="button" onClick={() => window.alert("Google sign-in is not configured for this local capstone. Use email sign-in or create an account.")} className="border border-[#e8e8e8] rounded py-3 text-sm font-medium hover:bg-gray-50 flex items-center justify-center gap-2">
               <Globe size={16} /> Google
             </button>
-            <button className="border border-[#e8e8e8] rounded py-3 text-sm font-medium hover:bg-gray-50 flex items-center justify-center gap-2">
+            <button type="button" onClick={() => window.alert("Facebook sign-in is not configured for this local capstone. Use email sign-in or create an account.")} className="border border-[#e8e8e8] rounded py-3 text-sm font-medium hover:bg-gray-50 flex items-center justify-center gap-2">
               <Facebook size={16} /> Facebook
             </button>
           </div>
@@ -624,12 +631,23 @@ function LoginPage({ navigate, onLogin }: { navigate: (p: Page) => void; onLogin
 
 // ─── Sign Up Page ─────────────────────────────────────────────────────────────
 
-function SignupPage({ navigate, onSignup }: { navigate: (p: Page) => void; onSignup: (name: string, email: string) => void }) {
+function SignupPage({ navigate, onSignup }: { navigate: (p: Page) => void; onSignup: (name: string, email: string, password: string) => Promise<{ ok: boolean; message?: string }> }) {
   const [show, setShow] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [agreed, setAgreed] = useState(false);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!agreed) return setError("Please accept the Terms of Service and Privacy Policy.");
+    setSubmitting(true);
+    const result = await onSignup(`${firstName} ${lastName}`.trim(), email, password);
+    setSubmitting(false);
+    setError(result.ok ? "" : result.message || "Unable to create your account.");
+  };
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="hidden lg:block relative bg-gray-900">
@@ -649,7 +667,7 @@ function SignupPage({ navigate, onSignup }: { navigate: (p: Page) => void; onSig
             <h1 className="text-3xl font-semibold mb-2" style={{ fontFamily: "var(--font-display)", fontStyle: "italic" }}>Create account</h1>
             <p className="text-gray-500 text-sm">Join the PopCulture community today</p>
           </div>
-          <form className="space-y-4" onSubmit={e => { e.preventDefault(); onSignup(`${firstName} ${lastName}`.trim() || "PopCulture Member", email); }}>
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[12px] font-semibold tracking-wide text-gray-700 mb-2">FIRST NAME</label>
@@ -672,10 +690,11 @@ function SignupPage({ navigate, onSignup }: { navigate: (p: Page) => void; onSig
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <input type="checkbox" id="agree" className="mt-0.5 accent-black" />
-              <label htmlFor="agree" className="text-xs text-gray-500 leading-relaxed">I agree to the <button type="button" className="underline">Terms of Service</button> and <button type="button" className="underline">Privacy Policy</button>. I consent to receiving marketing emails (you can unsubscribe anytime).</label>
+              <input type="checkbox" id="agree" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="mt-0.5 accent-black" />
+              <label htmlFor="agree" className="text-xs text-gray-500 leading-relaxed">I agree to the <button type="button" onClick={() => window.alert("Capstone demo terms: use the site lawfully and do not enter real payment information.")} className="underline">Terms of Service</button> and <button type="button" onClick={() => window.alert("This capstone stores account, cart, and order data locally in SQLite for demonstration.")} className="underline">Privacy Policy</button>. I consent to receiving marketing emails (you can unsubscribe anytime).</label>
             </div>
-            <button type="submit" className="w-full bg-black text-white py-4 text-[12px] tracking-widest font-semibold hover:bg-gray-800 transition-colors">CREATE ACCOUNT</button>
+            {error && <div className="border border-red-200 bg-red-50 text-red-700 rounded px-4 py-3 text-sm">{error}</div>}
+            <button disabled={submitting} type="submit" className="w-full bg-black text-white py-4 text-[12px] tracking-widest font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50">{submitting ? "CREATING ACCOUNT…" : "CREATE ACCOUNT"}</button>
           </form>
           <p className="text-center text-sm text-gray-500 mt-8">
             Already have an account?{" "}
@@ -725,9 +744,9 @@ function ForgotPasswordPage({ navigate }: { navigate: (p: Page) => void }) {
 
 // ─── Customer Dashboard ───────────────────────────────────────────────────────
 
-function DashboardPage({ navigate, products, wishlist, userName = "Nisha Sharma", onProductSelect }: { navigate: (p: Page) => void; products: Product[]; wishlist: number[]; userName?: string; onProductSelect: (p: Product) => void }) {
+function DashboardPage({ navigate, products, wishlist, orders, userName = "Nisha Sharma", onProductSelect }: { navigate: (p: Page) => void; products: Product[]; wishlist: number[]; orders: StoreOrder[]; userName?: string; onProductSelect: (p: Product) => void }) {
   const stats = [
-    { label: "Orders", value: "14", icon: Package, color: "bg-blue-50 text-blue-600" },
+    { label: "Orders", value: orders.length.toString(), icon: Package, color: "bg-blue-50 text-blue-600" },
     { label: "Wishlist", value: wishlist.length.toString(), icon: Heart, color: "bg-pink-50 text-pink-600" },
     { label: "Points", value: "2,847", icon: Award, color: "bg-[#f5f0e8] text-[#c8a97e]" },
     { label: "Saved", value: "$140", icon: DollarSign, color: "bg-green-50 text-green-600" },
@@ -757,13 +776,13 @@ function DashboardPage({ navigate, products, wishlist, userName = "Nisha Sharma"
             <button onClick={() => navigate("orders")} className="text-xs text-gray-500 hover:text-black">View all</button>
           </div>
           <div className="space-y-3">
-            {SAMPLE_ORDERS.map(o => (
+            {orders.slice(0, 3).map(o => (
               <div key={o.id} className="border border-[#e8e8e8] rounded p-4 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center"><Package size={16} className="text-gray-500" /></div>
                   <div>
-                    <p className="text-sm font-semibold">{o.id}</p>
-                    <p className="text-xs text-gray-400">{o.date} · {o.items} items</p>
+                    <p className="text-sm font-semibold">{o.orderNumber}</p>
+                    <p className="text-xs text-gray-400">{new Date(o.orderedAt).toLocaleDateString()} · {o.items} items</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -772,6 +791,7 @@ function DashboardPage({ navigate, products, wishlist, userName = "Nisha Sharma"
                 </div>
               </div>
             ))}
+            {orders.length === 0 && <div className="border border-dashed border-gray-200 rounded p-8 text-center text-sm text-gray-500">No orders yet. Your purchases will appear here after checkout.</div>}
           </div>
         </div>
         <div>
@@ -1017,7 +1037,7 @@ function ProductDetailPage({ navigate, product, products, onAddToCart, wishlist,
           <div className="mb-6">
             <div className="flex justify-between items-center mb-3">
               <span className="text-[12px] font-semibold tracking-wide">SIZE</span>
-              <button className="text-[12px] text-gray-500 underline hover:text-black">Size Guide</button>
+              <button onClick={() => window.alert("Size guide: XS 6-8, S 8-10, M 10-12, L 12-14, XL 14-16. Footwear uses EU sizing.")} className="text-[12px] text-gray-500 underline hover:text-black">Size Guide</button>
             </div>
             <div className="flex flex-wrap gap-2">
               {product.sizes.map(s => (
@@ -1169,7 +1189,7 @@ function CartPage({ navigate, cart, onRemove, onQtyChange, onProductSelect }: {
               </div>
               <div className="flex gap-2 mb-5">
                 <input className="flex-1 border border-[#e8e8e8] rounded px-3 py-2.5 text-sm outline-none focus:border-black" placeholder="Promo code" />
-                <button className="bg-black text-white px-4 py-2.5 text-xs font-semibold tracking-wide hover:bg-gray-800 rounded">APPLY</button>
+              <button onClick={() => window.alert("Promo code validation is not enabled for demo payments.")} className="bg-black text-white px-4 py-2.5 text-xs font-semibold tracking-wide hover:bg-gray-800 rounded">APPLY</button>
               </div>
               <button onClick={() => navigate("checkout")} className="w-full bg-black text-white py-4 text-[12px] tracking-widest font-semibold hover:bg-gray-800 transition-colors mb-3">PROCEED TO CHECKOUT</button>
               <button onClick={() => navigate("shop")} className="w-full border border-[#e8e8e8] py-4 text-[12px] tracking-widest font-semibold hover:bg-gray-50 transition-colors">CONTINUE SHOPPING</button>
@@ -1188,8 +1208,15 @@ function CartPage({ navigate, cart, onRemove, onQtyChange, onProductSelect }: {
 
 // ─── Checkout Page ────────────────────────────────────────────────────────────
 
-function CheckoutPage({ navigate, cart, onClearCart }: { navigate: (p: Page) => void; cart: CartItem[]; onClearCart: () => void }) {
+function CheckoutPage({ navigate, cart, user, onPlaceOrder }: { navigate: (p: Page) => void; cart: CartItem[]; user: SessionUser | null; onPlaceOrder: (email: string, address: string) => Promise<{ ok: boolean; message?: string }> }) {
   const [step, setStep] = useState(1);
+  const [email, setEmail] = useState(user?.email || "");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [zip, setZip] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const subtotal = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
   const total = subtotal + (subtotal >= 150 ? 0 : 12) + Math.round(subtotal * 0.1);
   const steps = ["Shipping", "Payment", "Review"];
@@ -1223,13 +1250,13 @@ function CheckoutPage({ navigate, cart, onClearCart }: { navigate: (p: Page) => 
                   <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">FIRST NAME</label><input className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black bg-white" placeholder="Nisha" /></div>
                   <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">LAST NAME</label><input className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black bg-white" placeholder="Sharma" /></div>
                 </div>
-                <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">EMAIL</label><input type="email" className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black bg-white" placeholder="you@example.com" /></div>
+                <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">EMAIL</label><input required value={email} onChange={e => setEmail(e.target.value)} type="email" className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black bg-white" placeholder="you@example.com" /></div>
                 <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">PHONE</label><input type="tel" className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black bg-white" placeholder="+1 (555) 000-0000" /></div>
-                <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">ADDRESS</label><input className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black bg-white" placeholder="42 Crown Street" /></div>
+                <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">ADDRESS</label><input required value={address} onChange={e => setAddress(e.target.value)} className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black bg-white" placeholder="42 Crown Street" /></div>
                 <div className="grid grid-cols-3 gap-4">
-                  <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">CITY</label><input className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black bg-white" placeholder="Sydney" /></div>
-                  <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">STATE</label><input className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black bg-white" placeholder="NSW" /></div>
-                  <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">ZIP</label><input className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black bg-white" placeholder="2000" /></div>
+                  <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">CITY</label><input value={city} onChange={e => setCity(e.target.value)} className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black bg-white" placeholder="Sydney" /></div>
+                  <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">STATE</label><input value={state} onChange={e => setState(e.target.value)} className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black bg-white" placeholder="NSW" /></div>
+                  <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">ZIP</label><input value={zip} onChange={e => setZip(e.target.value)} className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black bg-white" placeholder="2000" /></div>
                 </div>
                 <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">SHIPPING METHOD</label>
                   <div className="space-y-2">
@@ -1246,12 +1273,14 @@ function CheckoutPage({ navigate, cart, onClearCart }: { navigate: (p: Page) => 
                   </div>
                 </div>
               </div>
-              <button onClick={() => setStep(2)} className="mt-8 w-full bg-black text-white py-4 text-[12px] tracking-widest font-semibold hover:bg-gray-800 transition-colors">CONTINUE TO PAYMENT</button>
+              {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+              <button onClick={() => { if (!email || !address || !city || !state || !zip) return setError("Complete your email and delivery address."); setError(""); setStep(2); }} className="mt-8 w-full bg-black text-white py-4 text-[12px] tracking-widest font-semibold hover:bg-gray-800 transition-colors">CONTINUE TO PAYMENT</button>
             </div>
           )}
           {step === 2 && (
             <div>
               <h2 className="text-xl font-semibold mb-6">Payment Details</h2>
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-3 mb-4">Demo checkout only — no real payment is charged or stored.</p>
               <div className="space-y-4">
                 <div>
                   <label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">CARD NUMBER</label>
@@ -1266,7 +1295,7 @@ function CheckoutPage({ navigate, cart, onClearCart }: { navigate: (p: Page) => 
                   <div className="text-[11px] tracking-widest text-gray-500 uppercase mb-3 font-medium">Or pay with</div>
                   <div className="grid grid-cols-3 gap-3">
                     {["Apple Pay","Google Pay","PayPal"].map(m => (
-                      <button key={m} className="border border-[#e8e8e8] bg-white rounded py-3 text-xs font-semibold hover:border-black transition-colors">{m}</button>
+                      <button key={m} onClick={() => window.alert(`${m} requires a live payment-provider account. Use the demo card form for this capstone.`)} className="border border-[#e8e8e8] bg-white rounded py-3 text-xs font-semibold hover:border-black transition-colors">{m}</button>
                     ))}
                   </div>
                 </div>
@@ -1293,13 +1322,14 @@ function CheckoutPage({ navigate, cart, onClearCart }: { navigate: (p: Page) => 
                 ))}
               </div>
               <div className="bg-[#f5f0e8] rounded p-5 mb-6 space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-gray-600">Delivering to</span><span className="font-medium">42 Crown Street, NSW 2000</span></div>
-                <div className="flex justify-between"><span className="text-gray-600">Payment</span><span className="font-medium">•••• •••• •••• 3456</span></div>
+                <div className="flex justify-between gap-4"><span className="text-gray-600">Delivering to</span><span className="font-medium text-right">{address}, {city}, {state} {zip}</span></div>
+                <div className="flex justify-between"><span className="text-gray-600">Payment</span><span className="font-medium">Demo payment</span></div>
               </div>
               <div className="flex gap-3">
                 <button onClick={() => setStep(2)} className="flex-1 border border-[#e8e8e8] py-4 text-[12px] tracking-widest font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"><ArrowLeft size={14} /> BACK</button>
-                <button onClick={() => { onClearCart(); navigate("order-confirmation"); }} className="flex-[2] bg-black text-white py-4 text-[12px] tracking-widest font-semibold hover:bg-gray-800 transition-colors">PLACE ORDER · ${total}</button>
+                <button disabled={submitting} onClick={async () => { setSubmitting(true); const result = await onPlaceOrder(email, `${address}, ${city}, ${state} ${zip}`); setSubmitting(false); if (!result.ok) setError(result.message || "Unable to place order"); }} className="flex-[2] bg-black text-white py-4 text-[12px] tracking-widest font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50">{submitting ? "PLACING ORDER…" : `PLACE ORDER · $${total}`}</button>
               </div>
+              {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
             </div>
           )}
         </div>
@@ -1335,7 +1365,7 @@ function CheckoutPage({ navigate, cart, onClearCart }: { navigate: (p: Page) => 
 
 // ─── Order Confirmation ───────────────────────────────────────────────────────
 
-function OrderConfirmationPage({ navigate }: { navigate: (p: Page) => void }) {
+function OrderConfirmationPage({ navigate, order, user }: { navigate: (p: Page) => void; order: StoreOrder | null; user: SessionUser | null }) {
   return (
     <div className="min-h-screen flex items-center justify-center p-8 bg-[#fafafa]">
       <div className="max-w-lg w-full text-center">
@@ -1343,15 +1373,15 @@ function OrderConfirmationPage({ navigate }: { navigate: (p: Page) => void }) {
           <CheckCircle size={36} className="text-white" />
         </div>
         <p className="text-[11px] tracking-[0.4em] text-[#c8a97e] uppercase mb-3">Order Confirmed</p>
-        <h1 className="text-4xl mb-4" style={{ fontFamily: "var(--font-display)", fontStyle: "italic" }}>Thank you, Nisha!</h1>
-        <p className="text-gray-500 mb-2 leading-relaxed">Your order <strong>AP-2026-1054</strong> has been received and is being prepared.</p>
+        <h1 className="text-4xl mb-4" style={{ fontFamily: "var(--font-display)", fontStyle: "italic" }}>Thank you, {user?.name?.split(" ")[0] || "customer"}!</h1>
+        <p className="text-gray-500 mb-2 leading-relaxed">Your order <strong>{order?.orderNumber || "has"}</strong> been received and is being prepared.</p>
         <p className="text-gray-400 text-sm mb-10">A confirmation email has been sent to your registered email address.</p>
         <div className="bg-white border border-[#e8e8e8] rounded p-6 text-left mb-8 space-y-4">
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div><p className="text-gray-400 mb-1 text-xs">Order number</p><p className="font-semibold">AP-2026-1054</p></div>
-            <div><p className="text-gray-400 mb-1 text-xs">Estimated delivery</p><p className="font-semibold">Jul 5-8, 2026</p></div>
-            <div><p className="text-gray-400 mb-1 text-xs">Shipping to</p><p className="font-semibold">42 Crown Street, NSW</p></div>
-            <div><p className="text-gray-400 mb-1 text-xs">Payment</p><p className="font-semibold">•••• 3456</p></div>
+            <div><p className="text-gray-400 mb-1 text-xs">Order number</p><p className="font-semibold">{order?.orderNumber || "Processing"}</p></div>
+            <div><p className="text-gray-400 mb-1 text-xs">Status</p><p className="font-semibold capitalize">{order?.status || "processing"}</p></div>
+            <div><p className="text-gray-400 mb-1 text-xs">Total</p><p className="font-semibold">${order?.total?.toFixed(2) || "0.00"}</p></div>
+            <div><p className="text-gray-400 mb-1 text-xs">Payment</p><p className="font-semibold">Demo payment approved</p></div>
           </div>
           <div className="border-t border-[#e8e8e8] pt-4">
             <div className="flex items-center gap-3">
@@ -1378,7 +1408,7 @@ function OrderConfirmationPage({ navigate }: { navigate: (p: Page) => void }) {
 
 // ─── Orders Page ──────────────────────────────────────────────────────────────
 
-function OrdersPage({ navigate }: { navigate: (p: Page) => void }) {
+function OrdersPage({ navigate, orders }: { navigate: (p: Page) => void; orders: StoreOrder[] }) {
   const statusIcon = { delivered: CheckCircle, shipped: Truck, processing: Clock, cancelled: X };
   return (
     <div className="max-w-[900px] mx-auto px-6 py-12">
@@ -1388,17 +1418,17 @@ function OrdersPage({ navigate }: { navigate: (p: Page) => void }) {
       </div>
       <p className="text-sm text-gray-500 mb-10 ml-7">Track and manage your purchases</p>
       <div className="space-y-4">
-        {[...SAMPLE_ORDERS, { id: "AP-2026-1039", date: "May 10, 2026", status: "cancelled", items: 1, total: 179, tracking: null }].map(o => {
+        {orders.map(o => {
           const Icon = statusIcon[o.status as keyof typeof statusIcon] || Package;
           const colors: Record<string, string> = { delivered: "text-green-600", shipped: "text-blue-600", processing: "text-amber-600", cancelled: "text-red-500" };
           return (
-            <div key={o.id} className="border border-[#e8e8e8] rounded p-6 hover:border-gray-400 transition-colors cursor-pointer">
+            <div key={o.id} className="border border-[#e8e8e8] rounded p-6 hover:border-gray-400 transition-colors">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <Icon size={18} className={colors[o.status] || "text-gray-400"} />
                   <div>
-                    <p className="font-semibold text-sm">{o.id}</p>
-                    <p className="text-xs text-gray-400">{o.date}</p>
+                    <p className="font-semibold text-sm">{o.orderNumber}</p>
+                    <p className="text-xs text-gray-400">{new Date(o.orderedAt).toLocaleDateString()}</p>
                   </div>
                 </div>
                 <StatusBadge status={o.status} />
@@ -1406,16 +1436,15 @@ function OrdersPage({ navigate }: { navigate: (p: Page) => void }) {
               <div className="flex items-center justify-between text-sm">
                 <div className="flex gap-6 text-gray-500">
                   <span>{o.items} item{o.items > 1 ? "s" : ""}</span>
-                  {o.tracking && <span className="font-mono text-xs">{o.tracking}</span>}
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="font-semibold">${o.total}</span>
-                  <button className="text-[11px] tracking-wide text-gray-500 hover:text-black border border-[#e8e8e8] px-3 py-1.5 rounded">Details</button>
+                  <span className="font-semibold">${o.total.toFixed(2)}</span>
                 </div>
               </div>
             </div>
           );
         })}
+        {orders.length === 0 && <div className="text-center py-20 border border-dashed border-gray-200 rounded"><Package size={36} className="mx-auto text-gray-300 mb-3" /><p className="text-gray-500 mb-5">You have not placed an order yet.</p><button onClick={() => navigate("shop")} className="bg-black text-white px-6 py-3 text-xs tracking-widest">START SHOPPING</button></div>}
       </div>
     </div>
   );
@@ -1467,8 +1496,17 @@ function WishlistPage({ navigate, products, wishlist, onWishlistToggle, onAddToC
 
 // ─── Profile Page ─────────────────────────────────────────────────────────────
 
-function ProfilePage({ navigate, user }: { navigate: (p: Page) => void; user?: SessionUser | null }) {
+function ProfilePage({ navigate, user, onUserChange }: { navigate: (p: Page) => void; user?: SessionUser | null; onUserChange: (user: SessionUser) => void }) {
   const [activeTab, setActiveTab] = useState("account");
+  const [name, setName] = useState(user?.name || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [message, setMessage] = useState("");
+  const saveProfile = async () => {
+    const response = await fetch("/api/auth/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email }) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return setMessage(data.error || "Unable to save changes");
+    onUserChange(data.user); setMessage("Account details saved.");
+  };
   return (
     <div className="max-w-[900px] mx-auto px-6 py-12">
       <div className="flex items-center gap-3 mb-8">
@@ -1495,14 +1533,14 @@ function ProfilePage({ navigate, user }: { navigate: (p: Page) => void; user?: S
               <h2 className="font-semibold mb-5">Account Details</h2>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">FIRST NAME</label><input defaultValue={user?.name?.split(" ")[0] || "First"} className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black" /></div>
-                  <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">LAST NAME</label><input defaultValue={user?.name?.split(" ").slice(1).join(" ") || "Last"} className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black" /></div>
+                  <div className="col-span-2"><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">FULL NAME</label><input value={name} onChange={e => setName(e.target.value)} className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black" /></div>
                 </div>
-                <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">EMAIL</label><input defaultValue={user?.email || "you@example.com"} className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black" /></div>
+                <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">EMAIL</label><input value={email} onChange={e => setEmail(e.target.value)} className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black" /></div>
                 <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">PHONE</label><input defaultValue="+1 (555) 000-1234" className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black" /></div>
                 <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">DATE OF BIRTH</label><input type="date" defaultValue="1993-07-14" className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black" /></div>
               </div>
-              <button className="mt-6 bg-black text-white px-6 py-3 text-[12px] tracking-widest font-semibold hover:bg-gray-800 transition-colors">SAVE CHANGES</button>
+              {message && <p className={`mt-4 text-sm ${message.includes("saved") ? "text-green-700" : "text-red-600"}`}>{message}</p>}
+              <button onClick={saveProfile} className="mt-6 bg-black text-white px-6 py-3 text-[12px] tracking-widest font-semibold hover:bg-gray-800 transition-colors">SAVE CHANGES</button>
             </div>
           )}
           {activeTab === "addresses" && (
@@ -1517,10 +1555,10 @@ function ProfilePage({ navigate, user }: { navigate: (p: Page) => void; user?: S
                     <p className="text-sm text-gray-600">{addr.address}</p>
                     <p className="text-sm text-gray-600">{addr.city}</p>
                   </div>
-                  <div className="flex gap-2"><button className="text-xs text-gray-500 hover:text-black">Edit</button><button className="text-xs text-red-400 hover:text-red-600">Remove</button></div>
+                  <div className="flex gap-2"><button onClick={() => window.alert("Use the delivery form at checkout to enter your current address.")} className="text-xs text-gray-500 hover:text-black">Edit</button><button onClick={() => window.alert("Saved address management is planned for the next release.")} className="text-xs text-red-400 hover:text-red-600">Remove</button></div>
                 </div>
               ))}
-              <button className="border border-dashed border-[#e8e8e8] rounded p-5 w-full text-sm text-gray-400 hover:border-black hover:text-black transition-colors flex items-center justify-center gap-2"><Plus size={16} /> Add New Address</button>
+              <button onClick={() => navigate("checkout")} className="border border-dashed border-[#e8e8e8] rounded p-5 w-full text-sm text-gray-400 hover:border-black hover:text-black transition-colors flex items-center justify-center gap-2"><Plus size={16} /> Add Address at Checkout</button>
             </div>
           )}
           {activeTab === "security" && (
@@ -1529,7 +1567,7 @@ function ProfilePage({ navigate, user }: { navigate: (p: Page) => void; user?: S
               <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">CURRENT PASSWORD</label><input type="password" className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black" placeholder="••••••••" /></div>
               <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">NEW PASSWORD</label><input type="password" className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black" placeholder="••••••••" /></div>
               <div><label className="block text-[11px] font-semibold tracking-wide text-gray-600 mb-1.5">CONFIRM NEW PASSWORD</label><input type="password" className="w-full border border-[#e8e8e8] rounded px-4 py-3 text-sm outline-none focus:border-black" placeholder="••••••••" /></div>
-              <button className="bg-black text-white px-6 py-3 text-[12px] tracking-widest font-semibold hover:bg-gray-800 transition-colors">UPDATE PASSWORD</button>
+              <button onClick={() => window.alert("Password change is not enabled for seeded demo accounts. Create a new account with your own password.")} className="bg-black text-white px-6 py-3 text-[12px] tracking-widest font-semibold hover:bg-gray-800 transition-colors">UPDATE PASSWORD</button>
             </div>
           )}
           {(activeTab === "payment" || activeTab === "preferences") && (
@@ -1739,7 +1777,7 @@ function AdminHeader({ title, navigate }: { title: string; navigate: (p: Page) =
     <div className="border-b border-[#e8e8e8] px-8 py-5 flex items-center justify-between bg-white">
       <h1 className="text-xl font-semibold">{title}</h1>
       <div className="flex items-center gap-3">
-        <button className="relative p-2 hover:bg-gray-50 rounded-full">
+        <button onClick={() => window.alert("You have no new admin notifications.")} className="relative p-2 hover:bg-gray-50 rounded-full">
           <Bell size={18} className="text-gray-500" />
           <span className="absolute top-1 right-1 w-2 h-2 bg-[#c8a97e] rounded-full" />
         </button>
@@ -1751,15 +1789,18 @@ function AdminHeader({ title, navigate }: { title: string; navigate: (p: Page) =
 
 // ─── Admin Login ──────────────────────────────────────────────────────────────
 
-function AdminLoginPage({ navigate, onLogin }: { navigate: (p: Page) => void; onLogin?: (email: string, password: string) => { ok: boolean; message?: string } }) {
+function AdminLoginPage({ navigate, onLogin }: { navigate: (p: Page) => void; onLogin?: (email: string, password: string, remember?: boolean) => Promise<{ ok: boolean; message?: string }> }) {
   const [show, setShow] = useState(false);
   const [email, setEmail] = useState("amit@popculture.com");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (onLogin) {
-      const result = onLogin(email, password);
+      setSubmitting(true);
+      const result = await onLogin(email, password, true);
+      setSubmitting(false);
       if (!result.ok) setError(result.message || "Invalid credentials.");
     } else {
       navigate("admin-dashboard");
@@ -1778,14 +1819,14 @@ function AdminLoginPage({ navigate, onLogin }: { navigate: (p: Page) => void; on
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div><label className="block text-[11px] font-semibold tracking-wide text-gray-400 mb-1.5">EMAIL</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-[#1e1e1e] border border-white/10 rounded px-4 py-3 text-sm text-white outline-none focus:border-[#c8a97e] transition-colors placeholder:text-gray-600" placeholder="amit@popculture.com" /></div>
             <div><label className="block text-[11px] font-semibold tracking-wide text-gray-400 mb-1.5">PASSWORD</label>
-              <div className="relative"><input type={show ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-[#1e1e1e] border border-white/10 rounded px-4 py-3 text-sm text-white outline-none focus:border-[#c8a97e] transition-colors pr-10 placeholder:text-gray-600" placeholder="amit123" /><button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"><Eye size={16} /></button></div>
+              <div className="relative"><input type={show ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-[#1e1e1e] border border-white/10 rounded px-4 py-3 text-sm text-white outline-none focus:border-[#c8a97e] transition-colors pr-10 placeholder:text-gray-600" placeholder="amit1234" /><button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"><Eye size={16} /></button></div>
             </div>
             {error && <div className="border border-red-800 bg-red-900/30 text-red-400 rounded px-4 py-3 text-sm">{error}</div>}
             <div className="border border-white/5 rounded p-3 bg-white/5">
               <p className="text-[10px] tracking-widest text-gray-500 uppercase mb-1">Demo credentials</p>
-              <p className="text-xs text-gray-400">amit@popculture.com · amit123</p>
+              <p className="text-xs text-gray-400">amit@popculture.com · amit1234</p>
             </div>
-            <button type="submit" className="w-full bg-[#c8a97e] text-black py-4 text-[12px] tracking-widest font-semibold hover:bg-[#b8997e] transition-colors rounded">SIGN IN TO ADMIN</button>
+            <button disabled={submitting} type="submit" className="w-full bg-[#c8a97e] text-black py-4 text-[12px] tracking-widest font-semibold hover:bg-[#b8997e] transition-colors rounded disabled:opacity-50">{submitting ? "SIGNING IN…" : "SIGN IN TO ADMIN"}</button>
           </form>
           <button onClick={() => navigate("home")} className="w-full mt-4 text-center text-xs text-gray-500 hover:text-gray-300">← Back to store</button>
         </div>
@@ -2034,7 +2075,7 @@ function AdminProductsPage({ navigate, products, onProductsChange, onProductSele
                     <div className="flex items-center gap-2 justify-end">
                       <button onClick={() => { onProductSelect(p); navigate("product"); }} className="p-1.5 hover:bg-gray-100 rounded text-gray-500 hover:text-black"><Eye size={15} /></button>
                       <button onClick={() => openProductForm(p)} className="p-1.5 hover:bg-gray-100 rounded text-gray-500 hover:text-black"><Edit size={15} /></button>
-                      <button onClick={() => deleteProduct(p.id)} className="p-1.5 hover:bg-red-50 rounded text-gray-500 hover:text-red-500"><Trash size={15} /></button>
+                      <button onClick={() => deleteProduct(p.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500 hover:text-red-700"><Trash size={15} /></button>
                     </div>
                   </td>
                 </tr>
@@ -2044,7 +2085,7 @@ function AdminProductsPage({ navigate, products, onProductsChange, onProductSele
           <div className="px-6 py-4 border-t border-[#e8e8e8] flex items-center justify-between text-sm text-gray-500">
             <span>Showing {filtered.length} of {products.length} products</span>
             <div className="flex gap-1">
-              {[1,2,3].map(n => <button key={n} className={`w-8 h-8 rounded text-xs ${n === 1 ? "bg-black text-white" : "hover:bg-gray-100"}`}>{n}</button>)}
+              {[1,2,3].map(n => <button key={n} onClick={() => window.alert("All products currently fit on one live database page.")} className={`w-8 h-8 rounded text-xs ${n === 1 ? "bg-black text-white" : "hover:bg-gray-100"}`}>{n}</button>)}
             </div>
           </div>
         </div>
@@ -2070,7 +2111,7 @@ function AdminCategoriesPage({ navigate, products }: { navigate: (p: Page) => vo
       <div className="p-8">
         <div className="flex justify-between items-center mb-6">
           <p className="text-sm text-gray-500">{cats.length} categories</p>
-          <button className="bg-black text-white px-5 py-2.5 text-sm font-semibold rounded-lg hover:bg-gray-800 flex items-center gap-2"><Plus size={16} /> New Category</button>
+          <button onClick={() => window.alert("Add categories through the SQLite categories table before assigning products.")} className="bg-black text-white px-5 py-2.5 text-sm font-semibold rounded-lg hover:bg-gray-800 flex items-center gap-2"><Plus size={16} /> New Category</button>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {cats.map(c => (
@@ -2088,13 +2129,13 @@ function AdminCategoriesPage({ navigate, products }: { navigate: (p: Page) => vo
                   <p className="text-xs text-gray-400">{c.products} products · /{c.slug}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button className="p-1.5 hover:bg-gray-100 rounded text-gray-500"><Edit size={14} /></button>
-                  <button className="p-1.5 hover:bg-red-50 rounded text-gray-500 hover:text-red-500"><Trash size={14} /></button>
+                  <button onClick={() => window.alert(`${c.name} is managed by the live product catalogue.`)} className="p-1.5 hover:bg-gray-100 rounded text-gray-500"><Edit size={14} /></button>
+                  <button onClick={() => window.alert("Categories containing products cannot be removed.")} className="p-1.5 hover:bg-red-50 rounded text-red-500 hover:text-red-700"><Trash size={14} /></button>
                 </div>
               </div>
             </div>
           ))}
-          <button className="border-2 border-dashed border-[#e8e8e8] rounded-lg h-56 flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-black hover:text-black transition-colors">
+          <button onClick={() => window.alert("Create the category in SQLite, then refresh this page.")} className="border-2 border-dashed border-[#e8e8e8] rounded-lg h-56 flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-black hover:text-black transition-colors">
             <Plus size={24} /><span className="text-sm font-medium">Add Category</span>
           </button>
         </div>
@@ -2107,20 +2148,13 @@ function AdminCategoriesPage({ navigate, products }: { navigate: (p: Page) => vo
 
 function AdminOrdersPage({ navigate }: { navigate: (p: Page) => void }) {
   const [filter, setFilter] = useState("all");
-  const [orders, setOrders] = useState<AdminOrder[]>(() => {
-    if (typeof window === "undefined") return ADMIN_ORDERS;
-    try {
-      const saved = window.localStorage.getItem("amit-pandey-orders");
-      return saved ? JSON.parse(saved) : ADMIN_ORDERS;
-    } catch {
-      return ADMIN_ORDERS;
-    }
-  });
-  const saveOrders = (next: AdminOrder[]) => {
-    setOrders(next);
-    if (typeof window !== "undefined") window.localStorage.setItem("amit-pandey-orders", JSON.stringify(next));
+  const [orders, setOrders] = useState<AdminApiOrder[]>([]);
+  useEffect(() => { fetch("/api/admin/orders").then(r => r.json()).then(data => setOrders(data.orders || [])).catch(() => undefined); }, []);
+  const updateOrderStatus = async (id: number, status: string) => {
+    const response = await fetch(`/api/admin/orders/${id}/status`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
+    if (!response.ok) return window.alert("Unable to update order status");
+    setOrders(current => current.map(order => order.id === id ? { ...order, status } : order));
   };
-  const updateOrderStatus = (id: string, status: string) => saveOrders(orders.map(o => o.id === id ? { ...o, status } : o));
   const filtered = filter === "all" ? orders : orders.filter(o => o.status === filter);
   return (
     <div className="flex-1 overflow-auto bg-[#fafafa]">
@@ -2148,11 +2182,11 @@ function AdminOrdersPage({ navigate }: { navigate: (p: Page) => void }) {
             <tbody>
               {filtered.map(o => (
                 <tr key={o.id} className="border-b border-[#f5f5f5] hover:bg-[#fafafa] transition-colors">
-                  <td className="px-6 py-4 text-sm font-medium">{o.id}</td>
+                  <td className="px-6 py-4 text-sm font-medium">{o.orderNumber}</td>
                   <td className="px-4 py-4 text-sm text-gray-700">{o.customer}</td>
-                  <td className="px-4 py-4 text-sm text-gray-500 hidden lg:table-cell">{o.product}</td>
-                  <td className="px-4 py-4 text-xs text-gray-400 hidden md:table-cell">{o.date}</td>
-                  <td className="px-4 py-4 text-sm font-semibold text-right">${o.amount}</td>
+                  <td className="px-4 py-4 text-sm text-gray-500 hidden lg:table-cell">{o.items} item{o.items === 1 ? "" : "s"}</td>
+                  <td className="px-4 py-4 text-xs text-gray-400 hidden md:table-cell">{new Date(o.orderedAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-4 text-sm font-semibold text-right">${o.total.toFixed(2)}</td>
                   <td className="px-4 py-4 text-center">
                     <select value={o.status} onChange={e => updateOrderStatus(o.id, e.target.value)} className="border border-[#e8e8e8] rounded px-2 py-1 text-xs capitalize outline-none focus:border-black bg-white">
                       {["processing","shipped","delivered","cancelled"].map(s => <option key={s} value={s}>{s}</option>)}
@@ -2251,7 +2285,7 @@ function AdminCustomersPage({ navigate }: { navigate: (p: Page) => void }) {
                     <div className="flex gap-1 justify-end">
                       <button onClick={() => setViewing(c)} className="p-1.5 hover:bg-gray-100 rounded text-gray-500"><Eye size={14} /></button>
                       <button onClick={() => setEditing(c)} className="p-1.5 hover:bg-gray-100 rounded text-gray-500"><Edit size={14} /></button>
-                      <button onClick={() => deleteCustomer(c.id)} className="p-1.5 hover:bg-red-50 rounded text-gray-500 hover:text-red-500"><Trash size={14} /></button>
+                      <button onClick={() => deleteCustomer(c.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500 hover:text-red-700"><Trash size={14} /></button>
                     </div>
                   </td>
                 </tr>
@@ -2407,7 +2441,7 @@ function AdminPromotionsPage({ navigate }: { navigate: (p: Page) => void }) {
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => openPromotion(p)} className="p-1.5 hover:bg-gray-100 rounded text-gray-500"><Edit size={14} /></button>
-                  <button onClick={() => deletePromotion(p.id)} className="p-1.5 hover:bg-red-50 rounded text-gray-500 hover:text-red-500"><Trash size={14} /></button>
+                  <button onClick={() => deletePromotion(p.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500 hover:text-red-700"><Trash size={14} /></button>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3 text-xs text-gray-500 mb-4">
@@ -2648,7 +2682,7 @@ function AdminProfilePage({ navigate }: { navigate: (p: Page) => void }) {
           <div className="flex items-center gap-6 mb-8">
             <div className="relative">
               <div className="w-20 h-20 bg-black rounded-full flex items-center justify-center text-white text-2xl font-semibold">AP</div>
-              <button className="absolute -bottom-1 -right-1 w-7 h-7 bg-white border border-[#e8e8e8] rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50"><Upload size={12} /></button>
+              <button onClick={() => window.alert("Avatar upload is not configured for this local capstone.")} className="absolute -bottom-1 -right-1 w-7 h-7 bg-white border border-[#e8e8e8] rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50"><Upload size={12} /></button>
             </div>
             <div>
               <p className="text-xl font-semibold">Amit Pandey</p>
@@ -2702,11 +2736,12 @@ export default function App() {
     }
   });
   const [selectedProduct, setSelectedProduct] = useState<Product>(products[0] || PRODUCTS[0]);
-  const [wishlist, setWishlist] = useState<number[]>([1, 5, 9]);
-  const [cart, setCart] = useState<CartItem[]>([
-    { product: PRODUCTS[0], quantity: 1, size: "M", color: "black" },
-    { product: PRODUCTS[3], quantity: 1, size: "41", color: "white" },
-  ]);
+  const [wishlist, setWishlist] = useState<number[]>(() => {
+    try { return JSON.parse(window.localStorage.getItem("popculture-wishlist") || "[]"); } catch { return []; }
+  });
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [orders, setOrders] = useState<StoreOrder[]>([]);
+  const [lastOrder, setLastOrder] = useState<StoreOrder | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -2732,7 +2767,25 @@ export default function App() {
     return () => controller.abort();
   }, []);
 
+  const loadCart = async () => {
+    const response = await fetch("/api/cart");
+    if (response.ok) setCart((await response.json()).items || []);
+  };
+
+  const loadOrders = async () => {
+    const response = await fetch("/api/orders");
+    if (response.ok) setOrders((await response.json()).orders || []);
+  };
+
+  useEffect(() => {
+    fetch("/api/auth/me").then(response => response.json()).then(({ user }) => {
+      setSessionUser(user);
+      if (user) { loadCart(); loadOrders(); }
+    }).catch(() => undefined);
+  }, []);
+
   const navigate = (p: Page) => {
+    if (["dashboard", "checkout", "orders", "profile"].includes(p) && !sessionUser) p = "login";
     setPage(p);
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -2787,10 +2840,21 @@ export default function App() {
   };
 
   const toggleWishlist = (id: number) => {
-    setWishlist(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    setWishlist(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      window.localStorage.setItem("popculture-wishlist", JSON.stringify(next));
+      return next;
+    });
   };
 
-  const addToCart = (product: Product, quantity = 1, size = product.sizes[0], color = product.colors[0]) => {
+  const addToCart = async (product: Product, quantity = 1, size = product.sizes[0], color = product.colors[0]) => {
+    if (sessionUser) {
+      const response = await fetch("/api/cart/items", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId: product.id, quantity, size, color }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) return window.alert(data.error || "Unable to add this item");
+      setCart(data.items);
+      return;
+    }
     setCart(prev => {
       const existing = prev.find(i => i.product.id === product.id && i.size === size && i.color === color);
       if (existing) return prev.map(i => i.product.id === product.id && i.size === size && i.color === color ? { ...i, quantity: i.quantity + quantity } : i);
@@ -2798,40 +2862,74 @@ export default function App() {
     });
   };
 
-  const removeFromCart = (index: number) => setCart(prev => prev.filter((_, i) => i !== index));
-  const updateQty = (index: number, qty: number) => setCart(prev => prev.map((item, i) => i === index ? { ...item, quantity: qty } : item));
+  const removeFromCart = async (index: number) => {
+    const item = cart[index];
+    if (sessionUser && item.cartItemId) {
+      const response = await fetch(`/api/cart/items/${item.cartItemId}`, { method: "DELETE" });
+      if (response.ok) return setCart((await response.json()).items);
+      return window.alert("Unable to remove the item");
+    }
+    setCart(prev => prev.filter((_, i) => i !== index));
+  };
+  const updateQty = async (index: number, qty: number) => {
+    const item = cart[index];
+    if (sessionUser && item.cartItemId) {
+      const response = await fetch(`/api/cart/items/${item.cartItemId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quantity: qty }) });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) return setCart(data.items);
+      return window.alert(data.error || "Unable to update quantity");
+    }
+    setCart(prev => prev.map((entry, i) => i === index ? { ...entry, quantity: qty } : entry));
+  };
   const clearCart = () => setCart([]);
 
   const isAdmin = page.startsWith("admin") && page !== "admin-login";
   const isLoggedIn = !!sessionUser;
   const isAdminLoggedIn = sessionUser?.role === "admin";
 
-  const handleLogin = (rawEmail: string, rawPassword: string) => {
-    const email = rawEmail.trim().toLowerCase();
-    const password = rawPassword.trim();
-    const accounts = [
-      { email: "customer@popculture.com", password: "customer123", role: "customer" as const, name: "Nisha Sharma" },
-      { email: "amit@popculture.com", password: "amit123", role: "admin" as const, name: "Amit Pandey" },
-    ];
-    const account = accounts.find(a => a.email === email && a.password === password);
-
-    if (!account) {
-      return { ok: false, message: "Use customer@popculture.com / customer123 or amit@popculture.com / amit123 for this prototype." };
+  const handleLogin = async (email: string, password: string, remember = true) => {
+    const response = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, remember }) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return { ok: false, message: data.error || "Unable to sign in" };
+    setSessionUser(data.user);
+    if (data.user.role === "customer") {
+      for (const item of cart.filter(entry => !entry.cartItemId)) {
+        await fetch("/api/cart/items", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId: item.product.id, quantity: item.quantity, size: item.size, color: item.color }) });
+      }
     }
-
-    setSessionUser({ name: account.name, email: account.email, role: account.role });
-    navigate(account.role === "admin" ? "admin-dashboard" : "dashboard");
+    await Promise.all([loadCart(), loadOrders()]);
+    navigate(data.user.role === "admin" ? "admin-dashboard" : "dashboard");
     return { ok: true };
   };
 
-  const handleSignup = (name: string, email: string) => {
-    setSessionUser({ name, email: email || "member@popculture.com", role: "customer" });
+  const handleSignup = async (name: string, email: string, password: string) => {
+    const response = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, password }) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return { ok: false, message: data.details?.join(". ") || data.error || "Unable to create account" };
+    setSessionUser(data.user);
+    setCart([]);
     navigate("dashboard");
+    return { ok: true };
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
     setSessionUser(null);
+    setCart([]);
+    setOrders([]);
     navigate("home");
+  };
+
+  const handlePlaceOrder = async (email: string, address: string) => {
+    const response = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, address }) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return { ok: false, message: data.error || "Unable to place order" };
+    const created: StoreOrder = { ...data.order, orderedAt: new Date().toISOString(), items: cart.reduce((sum, item) => sum + item.quantity, 0) };
+    setLastOrder(created);
+    setCart([]);
+    await loadOrders();
+    navigate("order-confirmation");
+    return { ok: true };
   };
 
   // Admin layout
@@ -2874,15 +2972,15 @@ export default function App() {
     login: <LoginPage navigate={navigate} onLogin={handleLogin} />,
     signup: <SignupPage navigate={navigate} onSignup={handleSignup} />,
     "forgot-password": <ForgotPasswordPage navigate={navigate} />,
-    dashboard: <DashboardPage navigate={navigate} products={products} wishlist={wishlist} userName={sessionUser?.name} onProductSelect={setSelectedProduct} />,
+    dashboard: <DashboardPage navigate={navigate} products={products} wishlist={wishlist} orders={orders} userName={sessionUser?.name} onProductSelect={setSelectedProduct} />,
     shop: <ShopPage navigate={navigate} products={products} onAddToCart={addToCart} wishlist={wishlist} onWishlistToggle={toggleWishlist} onProductSelect={setSelectedProduct} />,
     product: <ProductDetailPage navigate={navigate} product={selectedProduct} products={products} onAddToCart={addToCart} wishlist={wishlist} onWishlistToggle={toggleWishlist} onProductSelect={setSelectedProduct} />,
     cart: <CartPage navigate={navigate} cart={cart} onRemove={removeFromCart} onQtyChange={updateQty} onProductSelect={setSelectedProduct} />,
-    checkout: <CheckoutPage navigate={navigate} cart={cart} onClearCart={clearCart} />,
-    "order-confirmation": <OrderConfirmationPage navigate={navigate} />,
-    orders: <OrdersPage navigate={navigate} />,
+    checkout: <CheckoutPage navigate={navigate} cart={cart} user={sessionUser} onPlaceOrder={handlePlaceOrder} />,
+    "order-confirmation": <OrderConfirmationPage navigate={navigate} order={lastOrder} user={sessionUser} />,
+    orders: <OrdersPage navigate={navigate} orders={orders} />,
     wishlist: <WishlistPage navigate={navigate} products={products} wishlist={wishlist} onWishlistToggle={toggleWishlist} onAddToCart={addToCart} onProductSelect={setSelectedProduct} />,
-    profile: <ProfilePage navigate={navigate} user={sessionUser} />,
+    profile: <ProfilePage navigate={navigate} user={sessionUser} onUserChange={setSessionUser} />,
     about: <AboutPage navigate={navigate} />,
     contact: <ContactPage navigate={navigate} />,
     faq: <FAQPage navigate={navigate} />,

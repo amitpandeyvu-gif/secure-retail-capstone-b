@@ -9,12 +9,15 @@ CREATE TABLE cart_items(cartitems_id INTEGER PRIMARY KEY,cart_id INTEGER NOT NUL
 CREATE TABLE orders(order_id INTEGER PRIMARY KEY,user_id INTEGER NOT NULL REFERENCES users(user_id),order_number TEXT NOT NULL UNIQUE,customer_email TEXT NOT NULL,customer_address TEXT NOT NULL CHECK(length(trim(customer_address))>0),total_cost INTEGER NOT NULL CHECK(total_cost>=0),status TEXT NOT NULL CHECK(status IN('processing','shipped','delivered','cancelled')),ordered_at TEXT NOT NULL);
 CREATE TABLE order_items(orderitems_id INTEGER PRIMARY KEY,order_id INTEGER NOT NULL REFERENCES orders(order_id),variant_id INTEGER NOT NULL REFERENCES product_variants(variant_id),price INTEGER NOT NULL CHECK(price>0),quantity INTEGER NOT NULL CHECK(quantity>0), item_name TEXT NOT NULL CHECK(length(trim(item_name))>0));
 CREATE TABLE payments(payment_id INTEGER PRIMARY KEY,order_id INTEGER NOT NULL REFERENCES orders(order_id),status TEXT NOT NULL CHECK(status IN('pending','succeeded','failed','refunded')),transaction_ref TEXT NOT NULL UNIQUE,amount INTEGER NOT NULL CHECK(amount>0));
+CREATE TABLE sessions(session_id INTEGER PRIMARY KEY,token_hash TEXT NOT NULL UNIQUE,user_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,expires_at TEXT NOT NULL,created_at TEXT NOT NULL);
+CREATE TABLE newsletter_subscribers(subscriber_id INTEGER PRIMARY KEY,email TEXT NOT NULL UNIQUE,created_at TEXT NOT NULL);
 CREATE INDEX cart_items_variant_idx ON cart_items(variant_id);
 CREATE INDEX order_items_order_idx ON order_items(order_id);
 CREATE INDEX order_items_variant_idx ON order_items(variant_id);
 CREATE INDEX orders_user_idx ON orders(user_id);
 CREATE INDEX payments_order_idx ON payments(order_id);
 CREATE INDEX products_category_idx ON products(category_id);
+CREATE INDEX sessions_user_idx ON sessions(user_id);
 CREATE INDEX variants_product_idx ON product_variants(product_id);
 CREATE VIEW cart_item_details AS
 SELECT ci.cartitems_id,ci.cart_id,p.product_id,p.name AS item_name,v.variant_id,
