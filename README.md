@@ -2,6 +2,14 @@
 
 This repository contains the final full-stack Pop Culture Clothing website. It combines the React catalogue frontend with the Sprint 3 Express API and SQLite product database.
 
+## Live website
+
+- **Storefront:** https://pop-culture-clothing-capstone.vercel.app
+- **Administration:** https://pop-culture-clothing-capstone.vercel.app/admin.html
+- **API health:** https://pop-culture-clothing-capstone.vercel.app/api/health
+
+The Vercel deployment provides a public assessment demonstration of the storefront, Express API and seeded catalogue database.
+
 ## Features
 
 - Responsive customer storefront, product catalogue, search and filters
