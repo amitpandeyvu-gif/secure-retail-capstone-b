@@ -12,6 +12,7 @@ service is needed.
 ## Live deployment
 
 **Storefront:** https://pop-culture-clothing-capstone.vercel.app  
+**Unified sign in:** https://pop-culture-clothing-capstone.vercel.app/login.html
 **Administration:** https://pop-culture-clothing-capstone.vercel.app/admin.html
 
 The repository is configured for Vercel's Node.js runtime. Vercel serves the
@@ -92,6 +93,7 @@ when `GOOGLE_CLIENT_ID` is not set.
 |---|---|
 | `GET /` | Storefront application |
 | `GET /admin.html` | Responsive administration portal |
+| `GET /login.html` | Unified customer Google sign-in and administrator login page |
 | `GET /about.html` | Store and project information |
 | `GET /contact.html` | Database-backed customer contact form |
 | `GET /help.html` | Delivery, returns, sizing and payment information |

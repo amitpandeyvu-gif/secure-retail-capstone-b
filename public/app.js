@@ -572,8 +572,8 @@ $$('[data-close]').forEach(button => button.addEventListener('click', closeDrawe
 $$('[data-dialog-close]').forEach(button => button.addEventListener('click', () => button.closest('dialog').close()));
 $('#checkout-button').addEventListener('click', openCheckout);
 $('#checkout-form').addEventListener('submit', placeOrder);
-$('#account-button').addEventListener('click', openAccount);
-$('#footer-orders').addEventListener('click', openAccount);
+$('#account-button').addEventListener('click', () => state.user ? openAccount() : location.assign('/login.html'));
+$('#footer-orders').addEventListener('click', () => state.user ? openAccount() : location.assign('/login.html?next=/?account=orders'));
 $('#track-button').addEventListener('click', () => openTracking());
 $('#nav-track').addEventListener('click', () => openTracking());
 $('#footer-track').addEventListener('click', () => openTracking());
@@ -603,4 +603,7 @@ $$('dialog').forEach(dialog => dialog.addEventListener('click', event => {
 
 updateAccountLabel();
 renderCart();
-loadCatalogue().then(() => { if (state.user) mergeAccountCart().catch(error => toast(error.message)); });
+loadCatalogue().then(async () => {
+  if (state.user) await mergeAccountCart().catch(error => toast(error.message));
+  if (state.user && new URLSearchParams(location.search).get('account') === 'orders') openAccount();
+});

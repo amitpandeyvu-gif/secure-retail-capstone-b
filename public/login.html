@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Customer and administrator sign-in for Pop Culture Clothing">
+  <title>Sign in · Pop Culture Clothing</title>
+  <link rel="stylesheet" href="/login.css">
+  <script type="module" src="/login.js"></script>
+</head>
+<body>
+  <main class="login-shell">
+    <section class="login-panel">
+      <a class="brand" href="/" aria-label="Pop Culture Clothing home"><span>PC</span><strong>POP CULTURE</strong></a>
+      <div class="login-copy">
+        <p class="eyebrow">Secure account access</p>
+        <h1>Welcome back.</h1>
+        <p>Choose the correct portal to continue. Customer and administrator access remain separate for security.</p>
+      </div>
+
+      <div class="portal-tabs" role="tablist" aria-label="Choose sign-in type">
+        <button class="active" id="customer-tab" role="tab" aria-selected="true" aria-controls="customer-panel" data-mode="customer"><span>♙</span><strong>Customer</strong><small>Orders and shopping</small></button>
+        <button id="admin-tab" role="tab" aria-selected="false" aria-controls="admin-panel" data-mode="admin"><span>⚙</span><strong>Administrator</strong><small>Store management</small></button>
+      </div>
+
+      <section class="portal-panel active" id="customer-panel" role="tabpanel" aria-labelledby="customer-tab">
+        <h2>Customer sign in</h2>
+        <p class="panel-intro">Continue securely with Google to access your saved bag and order history.</p>
+        <div id="google-signin" class="google-signin"></div>
+        <form class="fallback-form" id="customer-fallback" hidden>
+          <label>Full name<input name="name" maxlength="80" autocomplete="name" required></label>
+          <label>Email address<input name="email" type="email" maxlength="254" autocomplete="email" required></label>
+          <button class="button button-dark" type="submit">Continue with email</button>
+        </form>
+        <p class="form-message" id="customer-message" role="status"></p>
+        <div class="divider"><span>Assessment options</span></div>
+        <button class="button" id="sample-orders" type="button">View sample order history</button>
+        <a class="text-link" href="/#products">Continue shopping as a guest →</a>
+      </section>
+
+      <section class="portal-panel" id="admin-panel" role="tabpanel" aria-labelledby="admin-tab" hidden>
+        <h2>Administrator sign in</h2>
+        <p class="panel-intro">Manage products, stock, orders, customers and support requests.</p>
+        <form id="admin-login">
+          <label>Email address<input name="email" type="email" value="admin@gmail.com" autocomplete="username" required></label>
+          <label>Password<input name="password" type="password" value="admin@123" autocomplete="current-password" required></label>
+          <p class="form-message" id="admin-message" role="alert"></p>
+          <button class="button button-dark" type="submit">Open administration portal</button>
+        </form>
+        <div class="security-note"><strong>Protected area</strong><span>Administrator sessions are separate from customer accounts and expire automatically.</span></div>
+      </section>
+
+      <footer><a href="/">← Return to storefront</a><span>Demo website · No real payments</span></footer>
+    </section>
+    <aside class="login-visual" aria-hidden="true">
+      <div class="visual-content"><p>POP CULTURE CLOTHING</p><h2>One store.<br>Two secure portals.</h2><span>Customer shopping and store operations stay clearly separated.</span></div>
+    </aside>
+  </main>
+</body>
+</html>

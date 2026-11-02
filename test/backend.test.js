@@ -15,6 +15,16 @@ test('guest checkout does not depend on the disabled production demo login', () 
   assert.match(checkout, /showOrderSuccess/);
 });
 
+test('unified login page keeps customer and administrator access separate', () => {
+  const page = readFileSync(new URL('../public/login.html', import.meta.url), 'utf8');
+  const script = readFileSync(new URL('../public/login.js', import.meta.url), 'utf8');
+  assert.match(page, /Customer sign in/);
+  assert.match(page, /Administrator sign in/);
+  assert.match(script, /\/api\/auth\/google/);
+  assert.match(script, /\/api\/admin\/login/);
+  assert.match(script, /pc-admin-token/);
+});
+
 test('database constraints and seed data', () => {
   const db = initialiseDatabase(':memory:');
   try {

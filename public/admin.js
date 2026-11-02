@@ -22,8 +22,7 @@ function toast(message) {
 function showLogin() {
   state.token = null;
   sessionStorage.removeItem('pc-admin-token');
-  $('#login-screen').hidden = false;
-  $('#admin-app').hidden = true;
+  window.location.replace('/login.html?type=admin&next=/admin.html');
 }
 
 async function enterAdmin(email) {
