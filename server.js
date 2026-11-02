@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import express from 'express';
 import { createApp } from './src/app.js';
 import { initialiseDatabase, openDatabase } from './src/database.js';
 
@@ -15,6 +16,8 @@ const db = isVercel && !existsSync(databasePath)
   ? initialiseDatabase(databasePath)
   : openDatabase(databasePath);
 const app = createApp(db);
+// Keep the framework import in this entry point so Vercel detects the Express backend.
+void express;
 
 if (!isVercel) {
   const server = app.listen(port, host, () => {
