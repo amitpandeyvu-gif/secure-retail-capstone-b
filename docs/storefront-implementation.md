@@ -10,9 +10,11 @@ Customers can also track an order using its order number and checkout email. The
 tracking view shows Confirmed, Packed, Shipped and Delivered stages, item details
 and status timestamps recorded when an administrator changes fulfilment status.
 
-Any valid email address can be used to create or reopen a demonstration account.
-The account view shows orders placed with that email. This is intentionally a
-password-free assessment feature, not production authentication.
+The hosted storefront uses Google Identity Services. Google verifies the customer,
+the Express backend validates the signed ID token and the local customer record is
+created or reopened using the verified email address. The website never receives
+the customer's Google password. Local development retains an email-only fallback
+when a Google client ID is not configured.
 
 ## Data and order behaviour
 
@@ -22,7 +24,7 @@ creates an order and its line items in one transaction, then reduces variant sto
 Free shipping applies when the subtotal is at least AUD 80; otherwise shipping is
 AUD 9.95.
 
-Guest bags use browser storage. After email sign-in, the bag is synchronised with
+Guest bags use browser storage. After customer sign-in, the bag is synchronised with
 `carts` and `cart_items` in SQLite, so it can be recovered from the same account.
 Checkout also creates a fictional `payments` record with a unique demonstration
 reference and never requests or stores card details.
@@ -32,10 +34,10 @@ confirmed order so the complete storefront flow can be demonstrated safely.
 
 ## Verification
 
-- Node tests cover database constraints, product endpoints, email sign-in, order
+- Node tests cover database constraints, product endpoints, authentication, order
   creation, order history and stock reduction.
 - Automated browser checks cover desktop and mobile rendering, product loading,
-  email sign-in, product option selection and adding an item to the bag.
+  account access, product option selection and adding an item to the bag.
 - The interface includes keyboard focus support, labels, semantic page regions and
   reduced-motion support.
 
@@ -61,7 +63,8 @@ store receives from its API.
 
 ## Production improvements
 
-Before public deployment, replace the email-only demonstration login with verified
-authentication, connect a compliant payment provider, persist administrator sessions,
-rate limiting, CSRF protection, role-based access, delivery integrations and
-formal accessibility and security testing.
+Google customer authentication is enabled on the hosted deployment. Before using
+the project as a real store, connect a compliant payment provider, use persistent
+administrator sessions, add rate limiting, CSRF protection, role-based access,
+transactional email, delivery integrations and formal accessibility and security
+testing.

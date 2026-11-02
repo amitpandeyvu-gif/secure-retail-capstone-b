@@ -298,7 +298,7 @@ async function openAccount() {
     state.authConfig ||= await api('/api/auth/config');
     const googleEnabled = state.authConfig.google.enabled;
     container.innerHTML = googleEnabled
-      ? `<p class="eyebrow">Your account</p><h2>Sign in securely</h2><p class="account-intro">Use your Google account to access your bag, checkout and order history. A security email is sent after sign-in.</p><div id="google-signin"></div><p class="form-error" id="login-error" role="alert"></p>`
+      ? `<p class="eyebrow">Your account</p><h2>Sign in securely</h2><p class="account-intro">Use your Google account to access your bag, checkout and order history. Google verifies your account, and this website never receives your Google password.${state.authConfig?.email_notifications ? ' A security email is sent after sign-in.' : ''}</p><div id="google-signin"></div><p class="form-error" id="login-error" role="alert"></p>`
       : `<p class="eyebrow">Your account</p><h2>Sign in with email</h2><p class="account-intro">Google sign-in is not configured in this local demonstration. Enter a valid email address to continue.</p><form class="account-form" id="login-form"><label>Name<input name="name" required maxlength="80" autocomplete="name" placeholder="Your name"></label><label>Email address<input name="email" type="email" required maxlength="254" autocomplete="email" placeholder="you@example.com"></label><p class="form-error" id="login-error" role="alert"></p><button class="button button-dark" type="submit">Continue with email</button></form>`;
     $('#account-modal').showModal();
     if (googleEnabled) await renderGoogleButton(state.authConfig.google.client_id);

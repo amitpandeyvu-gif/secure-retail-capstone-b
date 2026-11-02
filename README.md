@@ -22,6 +22,10 @@ tracking and the administrator workflow are available, but hosted changes may re
 after a serverless restart. Local and Codespaces runs keep their SQLite data in
 `data/retail.db`.
 
+Production customer access uses Google Identity Services. Google verifies the
+account and the backend validates the signed ID token before creating or returning
+the local customer record. The application never receives a Google password.
+
 ## Run from GitHub
 
 Select **Open in GitHub Codespaces** above, choose **Create codespace**, and wait
@@ -49,7 +53,7 @@ npm start
 
 Open http://127.0.0.1:3000 in a browser. Stop with Ctrl+C. The storefront supports
 search, category filters, sorting, product options, wishlist, shopping bag,
-email sign-in, demo checkout, order history and order tracking. A separate administration portal
+Google sign-in when configured, demo checkout, order history and order tracking. A separate administration portal
 provides catalogue, inventory, order and customer management at
 http://127.0.0.1:3000/admin.html.
 
@@ -78,8 +82,9 @@ Run `npm run db:inspect` to inspect sample rows and database integrity.
 
 For local assessment demonstration, the administrator login is
 `admin@popculture.com` with password `Admin123!`. Change both environment values
-before sharing or deploying the application. Customer accounts remain the separate
-email-only demonstration flow requested for the storefront.
+before sharing or deploying the application. Customer accounts use verified Google
+sign-in in the hosted deployment. Local development keeps an email-only fallback
+when `GOOGLE_CLIENT_ID` is not set.
 
 ## Routes
 
@@ -90,6 +95,8 @@ email-only demonstration flow requested for the storefront.
 | `GET /about.html` | Store and project information |
 | `GET /contact.html` | Database-backed customer contact form |
 | `GET /help.html` | Delivery, returns, sizing and payment information |
+| `GET /privacy.html` | Privacy information for account and order data |
+| `GET /terms.html` | Demonstration storefront terms of use |
 | `GET /api` | API overview |
 | `/api/health` | Server and database health |
 | `/api/categories` | Three categories |
