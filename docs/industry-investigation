@@ -1,7 +1,61 @@
-## Summary of Findings
+# Industry investigation
 
-Across all three systems, I found the same pattern: size or variant options, stock availability, delivery cost and estimates, and returns information are shown to the customer before checkout, and order history and tracking are available after purchase.
+Three Australian online retail experiences were reviewed on 2 November 2026.
+The investigation focused on the product page, colour and size selection, stock
+communication, cart design and delivery information.
 
-From a front-end view, Cotton On shows size options, colour options and availability directly on the product page and displays the delivery charge in the cart, while Kmart Online shows stock information for each item.
+| System | Evidence observed | Useful pattern for Pop Culture Clothing |
+|---|---|---|
+| Cotton On | Product imagery, price, colour thumbnails, available sizes, size guide and free-delivery threshold are presented together. The cart remains clear when empty and recommends a next action. | Keep variants close to the price and show a simple cart state with a clear route back to products. |
+| Kmart | Colour, selected size, size guide and a location prompt for stock availability are visible on the product page. Delivery help separates timeframes, carriers, costs and preferences. | Make stock location-aware where possible and divide delivery information into short, scannable sections. |
+| ASOS | The page clearly marks the item as out of stock, keeps colour and size controls visible and changes the main action to “Notify me”. Delivery and returns are grouped by country and shipping method. | Use explicit stock states and change the action when an item cannot be purchased. Keep delivery and returns information easy to compare. |
 
-Our MVP shows only basic product details and a contact form, so these are the main gaps I will need to address in the interface.
+## Screenshot evidence
+
+### Cotton On
+
+Product page showing colour and size options:
+
+![Cotton On product page with colour and size options](images/cotton-on-product.png)
+
+Cart state:
+
+![Cotton On empty cart](images/cotton-on-cart.png)
+
+Delivery options:
+
+![Cotton On delivery options](images/cotton-on-delivery.png)
+
+### Kmart
+
+Product page showing selected colour, size and stock-location prompt:
+
+![Kmart product page with colour, size and availability prompt](images/kmart-product.png)
+
+Delivery help categories:
+
+![Kmart delivery information](images/kmart-delivery.png)
+
+### ASOS
+
+Product page showing an out-of-stock state, colour choices, size control and
+replacement notification action:
+
+![ASOS product page with out-of-stock state](images/asos-product.png)
+
+Delivery and returns information for Australia:
+
+![ASOS Australia delivery and returns information](images/asos-delivery.png)
+
+## Findings applied to the project
+
+The implemented storefront addresses the most important gaps found in the earlier
+MVP. It now presents product variants and live stock together, disables unavailable
+options, gives customers a persistent shopping bag after sign-in, calculates
+shipping before order confirmation, provides delivery and returns guidance and
+includes order history and tracking. The admin portal updates the same catalogue,
+stock and fulfilment data used by the customer experience.
+
+The screenshots are direct captures of the public Cotton On, Kmart and ASOS pages
+listed above. They are included for educational comparison only; the page designs,
+brands and product imagery remain the property of their respective owners.
