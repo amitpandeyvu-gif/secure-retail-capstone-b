@@ -127,7 +127,9 @@ export function createApp(db) {
     FROM products p JOIN categories c ON c.id = p.category_id`;
 
   app.get('/api/products', (req, res) => {
-    if (Object.keys(req.query).some(key => !['category', 'q'].includes(key))) {
+    const unsupportedFilters = Object.keys(req.query)
+      .filter(key => !['category', 'q', 'path', '__path'].includes(key));
+    if (unsupportedFilters.length) {
       return res.status(400).json({ error: 'Only category and q filters are supported' });
     }
     const { category, q } = req.query;
