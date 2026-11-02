@@ -249,7 +249,10 @@ export function createApp(db) {
     const args = [];
     if (category !== undefined) { where.push('p.category_id = ?'); args.push(Number(category)); }
     if (q) { where.push('instr(lower(p.name), lower(?)) > 0'); args.push(q); }
-    const sql = productSelect + (where.length ? ' WHERE ' + where.join(' AND ') : '') + ' ORDER BY p.category_id, p.id';
+    const departmentOrder = `CASE p.category_id
+      WHEN 1 THEN 1 WHEN 4 THEN 2 WHEN 5 THEN 3
+      WHEN 2 THEN 4 WHEN 3 THEN 5 WHEN 6 THEN 6 ELSE 99 END`;
+    const sql = productSelect + (where.length ? ' WHERE ' + where.join(' AND ') : '') + ` ORDER BY ${departmentOrder}, p.id`;
     const data = db.prepare(sql).all(...args);
     res.json({ currency: 'AUD', count: data.length, data });
   });
