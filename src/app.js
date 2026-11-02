@@ -188,10 +188,11 @@ async function sendStoreEmail({ to, subject, html }) {
 }
 
 async function sendLoginEmail({ email, name }) {
+  const baseUrl = (process.env.PUBLIC_APP_URL || 'https://pop-culture-clothing-capstone.vercel.app').replace(/\/$/, '');
   return sendStoreEmail({
     to: email,
-    subject: 'You signed in to Pop Culture Clothing',
-    html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#171717"><div style="padding:20px 24px;background:#111;color:#fff"><strong style="letter-spacing:.12em">POP CULTURE</strong></div><div style="padding:28px 24px;border:1px solid #ddd;border-top:0"><h1 style="margin:0 0 14px;font-size:26px">Welcome, ${safeEmailHtml(name)}</h1><p style="line-height:1.6">Your customer account was used to sign in to Pop Culture Clothing.</p><p style="line-height:1.6">If this was not you, secure your Google account and contact the store administrator.</p><hr style="margin:24px 0;border:0;border-top:1px solid #ddd"><p style="font-size:12px;color:#666">Pop Culture Clothing · Demonstration storefront</p></div></div>`
+    subject: 'Welcome to Pop Culture Clothing',
+    html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#171717"><div style="padding:20px 24px;background:#111;color:#fff"><strong style="letter-spacing:.12em">POP CULTURE CLOTHING</strong></div><div style="padding:28px 24px;border:1px solid #ddd;border-top:0"><p style="margin:0 0 8px;color:#c9341f;font-size:12px;font-weight:700;letter-spacing:.1em">CUSTOMER ACCOUNT</p><h1 style="margin:0 0 14px;font-size:26px">Welcome, ${safeEmailHtml(name)}</h1><p style="line-height:1.6;color:#444">You have successfully signed in. You can now shop, review your order history and track every order from confirmation through delivery.</p><p style="margin:24px 0"><a href="${safeEmailHtml(`${baseUrl}/?account=orders`)}" style="display:inline-block;padding:14px 22px;background:#111;color:#fff;text-decoration:none;font-weight:700">View my orders</a></p><p style="line-height:1.6;color:#666;font-size:13px">If this was not you, secure your Google account and contact the store administrator.</p><hr style="margin:24px 0;border:0;border-top:1px solid #ddd"><p style="font-size:12px;color:#666">Pop Culture Clothing · Demonstration storefront</p></div></div>`
   });
 }
 
@@ -204,6 +205,18 @@ async function sendOrderReceipt({ email, name, order, items, address, city, post
     to: email,
     subject: `Order #${order.id} confirmed — your Pop Culture receipt`,
     html: `<div style="display:none;max-height:0;overflow:hidden">Your order #${order.id} is confirmed. View your items, total and tracking details.</div><div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#171717;background:#fff"><div style="padding:22px 26px;background:#111;color:#fff"><strong style="letter-spacing:.14em">POP CULTURE CLOTHING</strong></div><div style="padding:30px 26px;border:1px solid #ddd;border-top:0"><p style="margin:0 0 8px;color:#c9341f;font-size:12px;font-weight:700;letter-spacing:.1em">ORDER CONFIRMED · #${order.id}</p><h1 style="margin:0 0 14px;font-size:28px;line-height:1.15">Thanks for your order, ${safeEmailHtml(name)}</h1><p style="margin:0;line-height:1.65;color:#444">We have received your order. You ordered the following items:</p><table role="presentation" style="width:100%;border-collapse:collapse;margin:22px 0">${itemRows}<tr><td style="padding-top:12px;color:#666">Subtotal</td><td style="padding-top:12px;text-align:right">${money(order.subtotal_cents)}</td></tr><tr><td style="padding-top:8px;color:#666">Shipping</td><td style="padding-top:8px;text-align:right">${order.shipping_cents ? money(order.shipping_cents) : 'Free'}</td></tr><tr><td style="padding-top:14px;border-top:1px solid #171717;font-size:18px;font-weight:700">Total</td><td style="padding-top:14px;border-top:1px solid #171717;text-align:right;font-size:18px;font-weight:700">${money(order.total_cents)}</td></tr></table><h2 style="margin:28px 0 8px;font-size:18px">Delivery details</h2><p style="margin:0;line-height:1.65">${safeEmailHtml(name)}<br>${safeEmailHtml(address)}<br>${safeEmailHtml(city)} ${safeEmailHtml(postcode)}</p><p style="margin:22px 0;font-size:13px;line-height:1.6;color:#666">Payment status: Succeeded<br>Reference: ${safeEmailHtml(transactionRef)}</p><p style="margin:26px 0"><a href="${safeEmailHtml(trackingUrl)}" style="display:inline-block;padding:14px 22px;background:#111;color:#fff;text-decoration:none;font-weight:700">Track order #${order.id}</a></p><p style="font-size:13px;line-height:1.6;color:#666">Keep this email as your receipt. Tracking requires order number <strong>#${order.id}</strong> and <strong>${safeEmailHtml(email)}</strong>.</p><div style="margin-top:24px;padding:14px;border:1px solid #ddd;background:#f5f4f1;font-size:13px;line-height:1.5"><strong>Assessment demonstration:</strong> no real payment was taken and no physical parcel will be dispatched.</div></div></div>`
+  });
+}
+
+async function sendOrderStatusEmail({ email, name, order }) {
+  const tracking = buildTrackingDetails(order, order.history || []);
+  const baseUrl = (process.env.PUBLIC_APP_URL || 'https://pop-culture-clothing-capstone.vercel.app').replace(/\/$/, '');
+  const trackingUrl = `${baseUrl}/?track=${order.id}&email=${encodeURIComponent(email)}`;
+  const statusColour = order.status === 'Cancelled' ? '#b42318' : '#c9341f';
+  return sendStoreEmail({
+    to: email,
+    subject: `Order #${order.id} update — ${order.status}`,
+    html: `<div style="display:none;max-height:0;overflow:hidden">Order #${order.id} is now ${safeEmailHtml(order.status)}. ${safeEmailHtml(tracking.message)}</div><div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#171717;background:#fff"><div style="padding:22px 26px;background:#111;color:#fff"><strong style="letter-spacing:.14em">POP CULTURE CLOTHING</strong></div><div style="padding:30px 26px;border:1px solid #ddd;border-top:0"><p style="margin:0 0 8px;color:${statusColour};font-size:12px;font-weight:700;letter-spacing:.1em">ORDER UPDATE · #${order.id}</p><h1 style="margin:0 0 14px;font-size:28px;line-height:1.15">Your order is ${safeEmailHtml(order.status.toLowerCase())}</h1><p style="margin:0 0 22px;line-height:1.65;color:#444">Hello ${safeEmailHtml(name)}, ${safeEmailHtml(tracking.message)}</p><table role="presentation" style="width:100%;border-collapse:collapse;background:#f5f4f1"><tr><td style="padding:14px;border-bottom:1px solid #ddd;color:#666">Current location</td><td style="padding:14px;border-bottom:1px solid #ddd;text-align:right;font-weight:700">${safeEmailHtml(tracking.current_location)}</td></tr><tr><td style="padding:14px;border-bottom:1px solid #ddd;color:#666">Delivery destination</td><td style="padding:14px;border-bottom:1px solid #ddd;text-align:right;font-weight:700">${safeEmailHtml(tracking.destination)}</td></tr><tr><td style="padding:14px;color:#666">Delivery estimate</td><td style="padding:14px;text-align:right;font-weight:700">${safeEmailHtml(tracking.delivery_estimate)}</td></tr></table><h2 style="margin:24px 0 8px;font-size:18px">What happens next?</h2><p style="margin:0;line-height:1.65;color:#444">${safeEmailHtml(tracking.next_step)}</p><p style="margin:26px 0"><a href="${safeEmailHtml(trackingUrl)}" style="display:inline-block;padding:14px 22px;background:#111;color:#fff;text-decoration:none;font-weight:700">View live tracking</a></p><p style="font-size:13px;line-height:1.6;color:#666">To track manually, use order number <strong>#${order.id}</strong> and <strong>${safeEmailHtml(email)}</strong>.</p><div style="margin-top:24px;padding:14px;border:1px solid #ddd;background:#f5f4f1;font-size:13px;line-height:1.5"><strong>Assessment demonstration:</strong> status and location information are simulated; no physical parcel is dispatched.</div></div></div>`
   });
 }
 
@@ -570,13 +583,16 @@ export function createApp(db) {
     const statuses = ['Confirmed', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
     if (!statuses.includes(req.body?.status)) return res.status(400).json({ error: 'Choose a valid order status' });
     const orderId = Number(req.params.id);
-    const localOrder = db.prepare('SELECT status FROM orders WHERE id = ?').get(orderId);
+    const localOrder = db.prepare(`SELECT o.*, u.name AS customer_name, u.email,
+      p.status AS payment_status, p.transaction_ref FROM orders o
+      JOIN users u ON u.id = o.user_id LEFT JOIN payments p ON p.order_id = o.id
+      WHERE o.id = ?`).get(orderId);
     let persistentOrder;
     try { persistentOrder = persistentOrdersEnabled() ? await getPersistentOrder(orderId) : null; }
     catch (error) { return next(error); }
     const order = persistentOrder || localOrder;
     if (!order) return res.status(404).json({ error: 'Order not found' });
-    if (order.status === req.body.status) return res.json({ message: 'Order status is already current' });
+    if (order.status === req.body.status) return res.json({ message: 'Order status is already current', email_sent: false });
     try {
       const note = `Order marked ${req.body.status.toLowerCase()}`;
       const createdAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
@@ -588,7 +604,25 @@ export function createApp(db) {
           .run(orderId, req.body.status, note, createdAt);
         db.exec('COMMIT');
       }
-      res.json({ message: 'Order status updated' });
+      const updatedOrder = persistentOrder
+        ? await getPersistentOrder(orderId)
+        : {
+            ...localOrder,
+            status: req.body.status,
+            history: db.prepare(`SELECT status, note, created_at FROM order_status_history
+              WHERE order_id = ? ORDER BY id`).all(orderId)
+          };
+      let emailSent = false;
+      try {
+        emailSent = await sendOrderStatusEmail({
+          email: updatedOrder.email,
+          name: updatedOrder.customer_name || updatedOrder.shipping_name,
+          order: updatedOrder
+        });
+      } catch (emailError) {
+        console.error('Order status email failed:', emailError.message);
+      }
+      res.json({ message: 'Order status updated', status: req.body.status, email_sent: emailSent });
     } catch (error) {
       try { db.exec('ROLLBACK'); } catch {}
       next(error);

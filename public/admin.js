@@ -162,7 +162,7 @@ async function loadOrders() {
 }
 
 async function updateOrder(select) {
-  try { await api(`/api/admin/orders/${select.dataset.orderStatus}`, { method:'PATCH', body:JSON.stringify({ status:select.value }) }); toast('Order status updated'); await Promise.all([loadOrders(), loadDashboard()]); }
+  try { const result = await api(`/api/admin/orders/${select.dataset.orderStatus}`, { method:'PATCH', body:JSON.stringify({ status:select.value }) }); toast(result.email_sent ? 'Order updated and customer notified by email' : result.message); await Promise.all([loadOrders(), loadDashboard()]); }
   catch (error) { toast(error.message); await loadOrders(); }
 }
 

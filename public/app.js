@@ -436,15 +436,15 @@ function trackingPlaceholder() {
   return '<div class="tracking-placeholder"><span aria-hidden="true"></span><h3>Ready to track</h3><p>Your status, latest checkpoint and delivery destination will appear here.</p></div>';
 }
 
-function openTracking(orderId = '') {
+function openTracking(orderId = '', orderEmail = '') {
   const form = $('#tracking-form');
   form.reset();
   form.elements.order_id.value = orderId;
-  if (state.user) form.elements.email.value = state.user.email;
+  form.elements.email.value = orderEmail || state.user?.email || '';
   $('#tracking-error').textContent = '';
   $('#tracking-result').innerHTML = trackingPlaceholder();
   $('#tracking-modal').showModal();
-  if (orderId && state.user) fetchTracking(orderId, state.user.email);
+  if (orderId && form.elements.email.value) fetchTracking(orderId, form.elements.email.value);
 }
 
 async function fetchTracking(orderId, email) {
@@ -649,5 +649,9 @@ updateAccountLabel();
 renderCart();
 loadCatalogue().then(async () => {
   if (state.user) await mergeAccountCart().catch(error => toast(error.message));
-  if (state.user && new URLSearchParams(location.search).get('account') === 'orders') openAccount();
+  const query = new URLSearchParams(location.search);
+  if (state.user && query.get('account') === 'orders') openAccount();
+  const trackingOrder = query.get('track');
+  const trackingEmail = query.get('email');
+  if (trackingOrder && trackingEmail) openTracking(trackingOrder, trackingEmail);
 });
