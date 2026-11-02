@@ -35,4 +35,9 @@
 .simple-footer { padding:38px 0; color:#aaa; background:var(--ink); }
 .simple-footer .shell { display:flex; justify-content:space-between; gap:20px; }
 .simple-footer a { color:white; }
+.legal-hero { min-height:300px; }
+.legal-copy { max-width:850px; }
+.legal-copy h2 { margin:38px 0 10px; font:600 clamp(1.45rem,3vw,2rem)/1.15 "Space Grotesk",sans-serif; }
+.legal-copy p { color:var(--muted); line-height:1.8; }
+.legal-copy a { text-decoration:underline; }
 @media(max-width:760px){.info-header-inner{min-height:70px}.info-header nav{gap:12px;font-size:.7rem}.info-header nav a:nth-child(2){display:none}.info-hero{min-height:310px}.intro-grid,.contact-grid,.help-block{grid-template-columns:1fr}.values-grid{grid-template-columns:1fr}.contact-form{grid-template-columns:1fr}.contact-form .wide{grid-column:auto}.content-section{padding-block:55px}.simple-footer .shell{flex-direction:column}}
