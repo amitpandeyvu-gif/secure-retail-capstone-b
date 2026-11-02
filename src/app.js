@@ -65,7 +65,71 @@ function safeEmailHtml(value) {
   return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 }
 
-async function sendLoginEmail({ email, name }) {
+function trackingCheckpointLocation(status, order) {
+  const destination = `${order.city} ${order.postcode}`.trim();
+  return {
+    Confirmed: 'Order received online',
+    Packed: 'Pop Culture fulfilment centre',
+    Shipped: `Delivery network — en route to ${destination}`,
+    Delivered: `${order.address}, ${destination}`,
+    Cancelled: 'Order processing stopped'
+  }[status] || 'Pop Culture order system';
+}
+
+function buildTrackingDetails(order, history) {
+  const destination = `${order.address}, ${order.city} ${order.postcode}`;
+  const details = {
+    Confirmed: {
+      progress: 25,
+      message: 'Your order is confirmed and waiting to be packed.',
+      next_step: 'We will update tracking when your items have been packed.',
+      delivery_estimate: 'Dispatch is normally within 1 business day.'
+    },
+    Packed: {
+      progress: 50,
+      message: 'Your items are packed and ready for carrier collection.',
+      next_step: 'The next update will appear when the parcel is dispatched.',
+      delivery_estimate: 'Carrier collection is the next step.'
+    },
+    Shipped: {
+      progress: 75,
+      message: `Your parcel is in transit to ${order.city}.`,
+      next_step: 'The next update will confirm delivery to the destination.',
+      delivery_estimate: 'Delivery is normally 2–5 business days after dispatch.'
+    },
+    Delivered: {
+      progress: 100,
+      message: `Your parcel has been delivered to ${order.city}.`,
+      next_step: 'Delivery is complete. Contact support if you cannot locate the parcel.',
+      delivery_estimate: 'Delivered'
+    },
+    Cancelled: {
+      progress: 0,
+      message: 'This order was cancelled and will not be dispatched.',
+      next_step: 'Contact support if you need help with this cancellation.',
+      delivery_estimate: 'No delivery scheduled'
+    }
+  }[order.status] || {
+    progress: 0,
+    message: 'We have received an update for this order.',
+    next_step: 'Check again later for more information.',
+    delivery_estimate: 'Not yet available'
+  };
+  const checkpoints = history.map(entry => ({
+    ...entry,
+    location: trackingCheckpointLocation(entry.status, order)
+  }));
+  const latest = checkpoints.at(-1);
+  return {
+    ...details,
+    current_location: trackingCheckpointLocation(order.status, order),
+    destination,
+    last_updated: latest?.created_at || order.created_at,
+    checkpoints
+  };
+}
+
+async function sendStoreEmail({ to, subject, html }) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) return false;
@@ -74,13 +138,31 @@ async function sendLoginEmail({ email, name }) {
     headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
     body: JSON.stringify({
       from,
-      to: [email],
-      subject: 'You signed in to Pop Culture Clothing',
-      html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#171717"><h1 style="font-size:24px">Welcome, ${safeEmailHtml(name)}</h1><p>Your Google account was used to sign in to Pop Culture Clothing.</p><p>If this was not you, please secure your Google account.</p><hr style="border:0;border-top:1px solid #ddd"><p style="font-size:12px;color:#666">Pop Culture Clothing · Assessment storefront</p></div>`
+      to: [to],
+      subject,
+      html
     })
   });
   if (!response.ok) throw new Error(`Email provider returned ${response.status}`);
   return true;
+}
+
+async function sendLoginEmail({ email, name }) {
+  return sendStoreEmail({
+    to: email,
+    subject: 'You signed in to Pop Culture Clothing',
+    html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#171717"><div style="padding:20px 24px;background:#111;color:#fff"><strong style="letter-spacing:.12em">POP CULTURE</strong></div><div style="padding:28px 24px;border:1px solid #ddd;border-top:0"><h1 style="margin:0 0 14px;font-size:26px">Welcome, ${safeEmailHtml(name)}</h1><p style="line-height:1.6">Your customer account was used to sign in to Pop Culture Clothing.</p><p style="line-height:1.6">If this was not you, secure your Google account and contact the store administrator.</p><hr style="margin:24px 0;border:0;border-top:1px solid #ddd"><p style="font-size:12px;color:#666">Pop Culture Clothing · Demonstration storefront</p></div></div>`
+  });
+}
+
+async function sendOrderReceipt({ email, name, order, items, address, city, postcode, transactionRef }) {
+  const money = cents => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(cents / 100);
+  const itemRows = items.map(item => `<tr><td style="padding:10px 0;border-bottom:1px solid #eee">${item.quantity}× ${safeEmailHtml(item.name)}<br><span style="font-size:12px;color:#666">${safeEmailHtml(item.size)} · ${safeEmailHtml(item.colour)}</span></td><td style="padding:10px 0;border-bottom:1px solid #eee;text-align:right">${money(item.price_cents * item.quantity)}</td></tr>`).join('');
+  return sendStoreEmail({
+    to: email,
+    subject: `Receipt for Pop Culture order #${order.id}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#171717"><div style="padding:20px 24px;background:#111;color:#fff"><strong style="letter-spacing:.12em">POP CULTURE</strong></div><div style="padding:28px 24px;border:1px solid #ddd;border-top:0"><p style="margin:0 0 8px;color:#db351b;font-size:12px;font-weight:700;letter-spacing:.1em">ORDER CONFIRMED</p><h1 style="margin:0 0 14px;font-size:26px">Thanks for your order, ${safeEmailHtml(name)}</h1><p style="line-height:1.6">We received demonstration order <strong>#${order.id}</strong>. Keep this email and use the order number with <strong>${safeEmailHtml(email)}</strong> on the tracking page.</p><table style="width:100%;border-collapse:collapse;margin:20px 0">${itemRows}<tr><td style="padding-top:14px;font-weight:700">Total</td><td style="padding-top:14px;text-align:right;font-weight:700">${money(order.total_cents)}</td></tr></table><h2 style="margin:26px 0 8px;font-size:17px">Delivery details</h2><p style="margin:0;line-height:1.6">${safeEmailHtml(name)}<br>${safeEmailHtml(address)}<br>${safeEmailHtml(city)} ${safeEmailHtml(postcode)}</p><p style="margin-top:20px;font-size:13px;color:#666">Demo payment status: Succeeded<br>Reference: ${safeEmailHtml(transactionRef)}</p><div style="margin-top:24px;padding:14px;background:#f5f4f1;font-size:13px;line-height:1.5"><strong>Assessment demonstration:</strong> no real payment was taken and no physical parcel will be dispatched.</div></div></div>`
+  });
 }
 
 export function createApp(db) {
@@ -158,7 +240,7 @@ export function createApp(db) {
     res.json({ currency: 'AUD', data: product });
   });
 
-  app.post('/api/auth/login', (req, res) => {
+  app.post('/api/auth/login', async (req, res) => {
     if (googleClientId && process.env.ALLOW_DEMO_LOGIN !== '1') {
       return res.status(403).json({ error: 'Use Google to sign in' });
     }
@@ -169,7 +251,13 @@ export function createApp(db) {
     const user = upsertUser(db, email, name);
     db.prepare('INSERT OR IGNORE INTO carts(user_id) VALUES (?)').run(user.id);
     const token = signAdminSession(user.email, Date.now() + (8 * 60 * 60 * 1000), customerSessionSecret);
-    res.json({ user, token, message: `Welcome, ${user.name}` });
+    let emailSent = false;
+    try {
+      emailSent = await sendLoginEmail(user);
+    } catch (error) {
+      console.error('Login email failed:', error.message);
+    }
+    res.json({ user, token, email_sent: emailSent, message: `Welcome, ${user.name}` });
   });
 
   app.post('/api/auth/google', async (req, res) => {
@@ -475,7 +563,7 @@ export function createApp(db) {
   app.get('/api/orders/:id/tracking', (req, res) => {
     if (!positiveInteger(req.params.id)) return res.status(400).json({ error: 'Enter a valid order number' });
     if (!validEmail(req.query.email)) return res.status(400).json({ error: 'Enter the email used for the order' });
-    const order = db.prepare(`SELECT o.id, o.status, o.total_cents, o.shipping_name, o.city, o.created_at,
+    const order = db.prepare(`SELECT o.id, o.status, o.total_cents, o.shipping_name, o.address, o.city, o.postcode, o.created_at,
       p.status AS payment_status, p.transaction_ref FROM orders o JOIN users u ON u.id = o.user_id
       LEFT JOIN payments p ON p.order_id = o.id WHERE o.id = ? AND u.email = ?`)
       .get(Number(req.params.id), normaliseEmail(req.query.email));
@@ -485,10 +573,11 @@ export function createApp(db) {
       WHERE oi.order_id = ? ORDER BY oi.id`).all(order.id);
     const history = db.prepare(`SELECT status, note, created_at FROM order_status_history
       WHERE order_id = ? ORDER BY id`).all(order.id);
-    res.json({ order: { ...order, items, history } });
+    const tracking = buildTrackingDetails(order, history);
+    res.json({ order: { ...order, items, history: tracking.checkpoints, tracking } });
   });
 
-  app.post('/api/orders', (req, res, next) => {
+  app.post('/api/orders', async (req, res, next) => {
     const email = validEmail(req.body?.email) ? normaliseEmail(req.body.email) : null;
     const name = cleanText(req.body?.name, 1, 80);
     const address = cleanText(req.body?.address, 4, 160);
@@ -508,7 +597,7 @@ export function createApp(db) {
     try {
       db.exec('BEGIN IMMEDIATE');
       const user = upsertUser(db, email, name);
-      const variantQuery = db.prepare(`SELECT v.id, v.product_id, v.stock, p.name, p.price_cents
+      const variantQuery = db.prepare(`SELECT v.id, v.product_id, v.stock, v.size, v.colour, p.name, p.price_cents
         FROM variants v JOIN products p ON p.id = v.product_id WHERE v.id = ?`);
       const selected = items.map(item => {
         const variant = variantQuery.get(item.variant_id);
@@ -537,9 +626,17 @@ export function createApp(db) {
       db.prepare('INSERT INTO payments(order_id,status,transaction_ref,amount_cents) VALUES (?,?,?,?)')
         .run(orderId, 'Succeeded', transactionRef, subtotal + shipping);
       db.exec('COMMIT');
+      const order = { id: orderId, status: 'Confirmed', subtotal_cents: subtotal, shipping_cents: shipping, total_cents: subtotal + shipping };
+      let emailSent = false;
+      try {
+        emailSent = await sendOrderReceipt({ email, name, order, items: selected, address, city, postcode, transactionRef });
+      } catch (error) {
+        console.error('Order receipt email failed:', error.message);
+      }
       res.status(201).json({
-        order: { id: orderId, status: 'Confirmed', subtotal_cents: subtotal, shipping_cents: shipping, total_cents: subtotal + shipping },
+        order,
         payment: { status: 'Succeeded', transaction_ref: transactionRef },
+        email_sent: emailSent,
         message: 'Order confirmed'
       });
     } catch (error) {

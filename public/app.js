@@ -413,7 +413,7 @@ async function loadOrders() {
 }
 
 function trackingPlaceholder() {
-  return '<div class="tracking-placeholder"><span>⌖</span><h3>Live order progress</h3><p>Your delivery stages will appear here.</p></div>';
+  return '<div class="tracking-placeholder"><span aria-hidden="true"></span><h3>Ready to track</h3><p>Your status, latest checkpoint and delivery destination will appear here.</p></div>';
 }
 
 function openTracking(orderId = '') {
@@ -430,24 +430,39 @@ function openTracking(orderId = '') {
 async function fetchTracking(orderId, email) {
   const result = $('#tracking-result');
   const error = $('#tracking-error');
+  const submit = $('#tracking-form button[type="submit"]');
   error.textContent = '';
-  result.innerHTML = '<div class="tracking-placeholder"><span class="tracking-loader"></span><h3>Checking your order…</h3></div>';
+  submit.disabled = true;
+  submit.textContent = 'Checking order…';
+  result.setAttribute('aria-busy', 'true');
+  result.innerHTML = '<div class="tracking-placeholder"><span class="tracking-loader" aria-hidden="true"></span><h3>Finding the latest update…</h3><p>Checking the order and delivery history.</p></div>';
   try {
     const { order } = await api(`/api/orders/${encodeURIComponent(orderId)}/tracking?email=${encodeURIComponent(email)}`);
+    const tracking = order.tracking;
     const stages = ['Confirmed', 'Packed', 'Shipped', 'Delivered'];
     const currentIndex = stages.indexOf(order.status);
     const history = new Map(order.history.map(entry => [entry.status, entry]));
     const timeline = order.status === 'Cancelled'
-      ? `<div class="tracking-cancelled"><strong>Order cancelled</strong><span>This order is no longer being prepared for delivery.</span></div>`
+      ? `<div class="tracking-cancelled"><strong>Order cancelled</strong><span>${escapeHTML(tracking.next_step)}</span></div>`
       : `<div class="tracking-timeline">${stages.map((stage, index) => {
           const entry = history.get(stage);
           const stateClass = index < currentIndex ? 'complete' : index === currentIndex ? 'current' : '';
-          return `<div class="tracking-step ${stateClass}"><span class="step-marker">${index < currentIndex ? '✓' : index + 1}</span><div><strong>${stage}</strong><small>${entry ? `${escapeHTML(entry.note)} · ${new Date(`${entry.created_at}Z`).toLocaleString('en-AU')}` : index === currentIndex ? 'Current order stage' : 'Waiting for update'}</small></div></div>`;
+          const message = entry
+            ? `<span>${escapeHTML(entry.note)}</span><span>${escapeHTML(entry.location)}</span><time>${new Date(`${entry.created_at}Z`).toLocaleString('en-AU')}</time>`
+            : `<span>${index === currentIndex ? 'Current order stage' : 'Waiting for the previous stage'}</span>`;
+          return `<div class="tracking-step ${stateClass}"><span class="step-marker">${index < currentIndex ? '✓' : index + 1}</span><div><strong>${stage}</strong><small>${message}</small></div></div>`;
         }).join('')}</div>`;
-    result.innerHTML = `<div class="tracking-summary"><p class="eyebrow">Order #${order.id}</p><div><h3>${escapeHTML(order.status)}</h3><strong>${money(order.total_cents)}</strong></div><p>Delivering to ${escapeHTML(order.shipping_name)} in ${escapeHTML(order.city)}.</p><p>Demo payment: <strong>${escapeHTML(order.payment_status || 'Pending')}</strong>${order.transaction_ref ? ` · ${escapeHTML(order.transaction_ref)}` : ''}</p></div>${timeline}<div class="tracking-items"><h4>Order contents</h4>${order.items.map(item => `<p><span>${item.quantity}× ${escapeHTML(item.name)}<small>${escapeHTML(item.size)} · ${escapeHTML(item.colour)}</small></span></p>`).join('')}</div>`;
+    result.innerHTML = `<div class="tracking-summary"><div class="tracking-order-line"><span>Order #${order.id}</span><strong>${money(order.total_cents)}</strong></div><span class="tracking-status">${escapeHTML(order.status)}</span><h3>${escapeHTML(tracking.message)}</h3><div class="tracking-progress" role="progressbar" aria-label="Delivery progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${tracking.progress}"><span style="width:${tracking.progress}%"></span></div><p>${escapeHTML(tracking.next_step)}</p></div><dl class="tracking-facts"><div><dt>Current checkpoint</dt><dd>${escapeHTML(tracking.current_location)}</dd></div><div><dt>Delivery destination</dt><dd>${escapeHTML(tracking.destination)}</dd></div><div><dt>Last updated</dt><dd>${new Date(`${tracking.last_updated}Z`).toLocaleString('en-AU')}</dd></div><div><dt>Delivery estimate</dt><dd>${escapeHTML(tracking.delivery_estimate)}</dd></div></dl>${timeline}<details class="tracking-details"><summary>Order and payment details</summary><div class="tracking-items"><h4>Order contents</h4>${order.items.map(item => `<p><span>${item.quantity}× ${escapeHTML(item.name)}<small>${escapeHTML(item.size)} · ${escapeHTML(item.colour)}</small></span></p>`).join('')}<p class="tracking-payment">Demo payment: <strong>${escapeHTML(order.payment_status || 'Pending')}</strong>${order.transaction_ref ? ` · ${escapeHTML(order.transaction_ref)}` : ''}</p></div></details>`;
   } catch (requestError) {
-    result.innerHTML = trackingPlaceholder();
-    error.textContent = requestError.message;
+    const message = requestError.message === 'Failed to fetch'
+      ? 'Tracking is temporarily unavailable. Check your connection and try again.'
+      : requestError.message;
+    error.textContent = message;
+    result.innerHTML = `<div class="tracking-error-state"><span aria-hidden="true">!</span><h3>We could not find that order</h3><p>${escapeHTML(message)}</p><small>Check both fields against the confirmation. Recent demonstration orders can be cleared when the website is updated; sample order #1002 remains available.</small></div>`;
+  } finally {
+    submit.disabled = false;
+    submit.textContent = 'Track order';
+    result.removeAttribute('aria-busy');
   }
 }
 
@@ -478,9 +493,12 @@ function renderCheckoutSummary() {
   $('#checkout-totals').innerHTML = `<div class="checkout-total-row"><span>Subtotal</span><span>${money(subtotal)}</span></div><div class="checkout-total-row"><span>Shipping</span><span>${shipping ? money(shipping) : 'Free'}</span></div><div class="checkout-total-row total"><span>Total</span><span>${money(subtotal + shipping)}</span></div>`;
 }
 
-function showOrderSuccess(order, email) {
+function showOrderSuccess(order, email, emailSent) {
   const content = $('#order-success-content');
-  content.innerHTML = `<div class="success-mark">✓</div><p class="eyebrow">Order confirmed</p><h2>Thanks for your order</h2><p>Your order <strong>#${order.id}</strong> has been recorded for <strong>${escapeHTML(email)}</strong>.</p><div class="success-total"><span>Total</span><strong>${money(order.total_cents)}</strong></div><p class="success-note">This assessment uses a fictional payment. No card details or real payment were collected.</p><div class="success-actions"><button class="button button-dark" id="success-orders" type="button">View order history</button><button class="button" id="success-track" type="button">Track this order</button></div>`;
+  const receiptMessage = emailSent
+    ? `A receipt has been sent to <strong>${escapeHTML(email)}</strong>.`
+    : 'Your receipt is available in order history. Email delivery is not currently configured.';
+  content.innerHTML = `<div class="success-mark">✓</div><p class="eyebrow">Order confirmed</p><h2>Thanks for your order</h2><p>Your order <strong>#${order.id}</strong> has been recorded. ${receiptMessage}</p><div class="success-total"><span>Total</span><strong>${money(order.total_cents)}</strong></div><p class="success-note">This assessment uses a fictional payment. No card details or real payment were collected.</p><div class="success-actions"><button class="button button-dark" id="success-orders" type="button">View order history</button><button class="button" id="success-track" type="button">Track this order</button></div>`;
   $('#order-success-modal').showModal();
   $('#success-orders').addEventListener('click', () => { $('#order-success-modal').close(); openAccount(); });
   $('#success-track').addEventListener('click', () => { $('#order-success-modal').close(); openTracking(order.id); });
@@ -499,7 +517,7 @@ async function placeOrder(event) {
       name: form.get('name'), email: form.get('email'), address: form.get('address'), city: form.get('city'), postcode: form.get('postcode'),
       items: state.cart.map(item => ({ variant_id: item.variant_id, quantity: item.quantity }))
     };
-    const { order } = await api('/api/orders', { method: 'POST', body: JSON.stringify(payload) });
+    const { order, email_sent: emailSent } = await api('/api/orders', { method: 'POST', body: JSON.stringify(payload) });
     const sameSignedInCustomer = state.user && state.authToken && state.user.email.toLowerCase() === payload.email.trim().toLowerCase();
     if (!sameSignedInCustomer) {
       state.user = { name: payload.name.trim(), email: payload.email.trim().toLowerCase(), guest: true };
@@ -511,7 +529,7 @@ async function placeOrder(event) {
     saveCart(false);
     updateAccountLabel();
     $('#checkout-modal').close();
-    showOrderSuccess(order, payload.email);
+    showOrderSuccess(order, payload.email, emailSent);
     await loadCatalogue();
   } catch (requestError) { error.textContent = requestError.message; }
   finally { submit.disabled = false; submit.textContent = 'Place order'; }
@@ -578,6 +596,12 @@ $('#track-button').addEventListener('click', () => openTracking());
 $('#nav-track').addEventListener('click', () => openTracking());
 $('#footer-track').addEventListener('click', () => openTracking());
 $('#tracking-form').addEventListener('submit', trackOrder);
+$('#tracking-sample').addEventListener('click', () => {
+  const form = $('#tracking-form');
+  form.elements.order_id.value = '1002';
+  form.elements.email.value = 'demo@popculture.com';
+  fetchTracking('1002', 'demo@popculture.com');
+});
 $('#account-content').addEventListener('click', event => {
   const button = event.target.closest('[data-track-order]');
   if (!button) return;

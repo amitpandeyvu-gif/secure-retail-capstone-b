@@ -152,8 +152,9 @@ Sprint 3 GitHub commits. Existing team history is not proof of a new contributio
 Customer sign-in supports Google Identity Services when `GOOGLE_CLIENT_ID` is
 configured. The server verifies Google's signed ID token before creating the local
 customer record. When `RESEND_API_KEY` and a verified `EMAIL_FROM` sender are set,
-the customer receives a sign-in notification email. Without Google configuration,
-local development retains the email-only assessment demonstration. No passwords or
+the customer receives a sign-in notification email and a professional receipt after
+placing an order. Email failure never prevents sign-in or checkout. Without Google
+configuration, local development retains the email-only assessment demonstration. No passwords or
 real payment details are collected.
 Orders, order items, tracking history and stock updates are stored in SQLite for functional testing.
 The admin session is separate, password-protected and held in server memory; use a

@@ -76,6 +76,7 @@ test('HTTP routes query SQLite and reject invalid requests', async () => {
     assert.equal((await post('/api/auth/google', { credential: 'invalid' }))[0], 503);
     const customerLogin = await post('/api/auth/login', { name: 'Amit Pandey', email: 'amit@example.com' });
     assert.equal(customerLogin[0], 200);
+    assert.equal(customerLogin[1].email_sent, false);
     assert.match(customerLogin[1].token, /^[^.]+\.[^.]+$/);
     assert.equal((await post('/api/auth/login', { name: 'Amit', email: 'not-an-email' }))[0], 400);
     const savedCart = await fetch(base + '/api/cart', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Amit Pandey', email: 'amit@example.com', items: [{ variant_id: 1, quantity: 1 }] }) });
@@ -109,6 +110,7 @@ test('HTTP routes query SQLite and reject invalid requests', async () => {
     });
     assert.equal(order[0], 201);
     assert.equal(order[1].order.total_cents, 6985);
+    assert.equal(order[1].email_sent, false);
     assert.equal((await get('/api/orders?email=amit%40example.com'))[1].data.length, 1);
     assert.equal(db.prepare('SELECT stock FROM variants WHERE id = 1').get().stock, 28);
     const tracking = await get(`/api/orders/${order[1].order.id}/tracking?email=amit%40example.com`);
@@ -116,11 +118,17 @@ test('HTTP routes query SQLite and reject invalid requests', async () => {
     assert.equal(tracking[1].order.status, 'Confirmed');
     assert.equal(tracking[1].order.payment_status, 'Succeeded');
     assert.equal(tracking[1].order.history[0].status, 'Confirmed');
+    assert.equal(tracking[1].order.tracking.progress, 25);
+    assert.match(tracking[1].order.tracking.current_location, /Order received online/);
+    assert.match(tracking[1].order.tracking.destination, /10 Example Street, Melbourne 3000/);
+    assert.match(tracking[1].order.history[0].location, /Order received online/);
     assert.equal((await get(`/api/orders/${order[1].order.id}/tracking?email=wrong%40example.com`))[0], 404);
     assert.equal((await admin('/api/admin/orders'))[1].data.length, 3);
     assert.equal((await admin(`/api/admin/orders/${order[1].order.id}`, 'PATCH', { status: 'Packed' }))[0], 200);
     const packedTracking = await get(`/api/orders/${order[1].order.id}/tracking?email=amit%40example.com`);
     assert.equal(packedTracking[1].order.status, 'Packed');
+    assert.equal(packedTracking[1].order.tracking.progress, 50);
+    assert.match(packedTracking[1].order.tracking.current_location, /fulfilment centre/);
     assert.deepEqual(packedTracking[1].order.history.map(item => item.status), ['Confirmed', 'Packed']);
     assert.equal((await admin('/api/admin/customers'))[1].data[0].order_count, 1);
     assert.equal((await admin('/api/admin/payments'))[1].data[0].amount_cents, 6985);

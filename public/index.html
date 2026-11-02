@@ -198,16 +198,20 @@
       <section class="tracking-search">
         <p class="eyebrow">Order tracking</p>
         <h2>Where is my order?</h2>
-        <p>Enter the order number and email address shown on your confirmation.</p>
+        <p>Enter the order number and checkout email to see the latest checkpoint and destination.</p>
         <form class="account-form" id="tracking-form">
           <label>Order number<input name="order_id" inputmode="numeric" pattern="[0-9]+" required placeholder="For example, 12"></label>
           <label>Order email<input name="email" type="email" required maxlength="254" autocomplete="email" placeholder="you@example.com"></label>
           <p class="form-error" id="tracking-error" role="alert"></p>
           <button class="button button-dark" type="submit">Track order</button>
         </form>
+        <div class="tracking-example">
+          <span>Want to see an example?</span>
+          <button id="tracking-sample" type="button">Track sample order #1002</button>
+        </div>
       </section>
       <section class="tracking-result" id="tracking-result" aria-live="polite">
-        <div class="tracking-placeholder"><span>⌖</span><h3>Live order progress</h3><p>Your delivery stages will appear here.</p></div>
+        <div class="tracking-placeholder"><span aria-hidden="true"></span><h3>Ready to track</h3><p>Your status, latest checkpoint and delivery destination will appear here.</p></div>
       </section>
     </div>
   </dialog>
