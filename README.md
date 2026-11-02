@@ -154,10 +154,12 @@ Sprint 3 GitHub commits. Existing team history is not proof of a new contributio
 
 Customer sign-in supports Google Identity Services when `GOOGLE_CLIENT_ID` is
 configured. The server verifies Google's signed ID token before creating the local
-customer record. When `RESEND_API_KEY` and a verified `EMAIL_FROM` sender are set,
-the customer receives a sign-in notification and a professional itemised receipt
+customer record. When either Gmail SMTP (`GMAIL_USER` and `GMAIL_APP_PASSWORD`) or
+Resend (`RESEND_API_KEY` and a verified `EMAIL_FROM`) is configured, the customer
+receives a sign-in notification and a professional itemised receipt
 after placing an order. The receipt includes subtotal, shipping, total, delivery
-details, payment reference and a direct tracking link. `EMAIL_REPLY_TO` is optional,
+details, payment reference and a direct tracking link. Gmail requires Google 2-Step
+Verification and a 16-character App Password. `EMAIL_REPLY_TO` is optional,
 and `PUBLIC_APP_URL` controls the tracking link. Email failure never prevents sign-in
 or checkout. Without Google configuration, local development retains the email-only
 assessment demonstration. No passwords or real payment details are collected.

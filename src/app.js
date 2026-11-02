@@ -2,6 +2,7 @@ import express from 'express';
 import { resolve } from 'node:path';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
+import nodemailer from 'nodemailer';
 import { projectRoot } from './database.js';
 import {
   getPersistentOrder,
@@ -14,6 +15,7 @@ import {
 } from './order-store.js';
 
 const googleKeys = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
+let gmailTransporter;
 
 function positiveInteger(value) {
   return typeof value === 'string' && /^[1-9]\d*$/.test(value) && Number.isSafeInteger(Number(value));
@@ -138,7 +140,32 @@ function buildTrackingDetails(order, history) {
   };
 }
 
+function emailNotificationsEnabled() {
+  const gmailReady = Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
+  const resendReady = Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+  return gmailReady || resendReady;
+}
+
 async function sendStoreEmail({ to, subject, html }) {
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPassword = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, '');
+  if (gmailUser && gmailPassword) {
+    if (!gmailTransporter) {
+      gmailTransporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: gmailUser, pass: gmailPassword }
+      });
+    }
+    const result = await gmailTransporter.sendMail({
+      from: process.env.EMAIL_FROM || `Pop Culture Clothing <${gmailUser}>`,
+      to,
+      subject,
+      html,
+      ...(process.env.EMAIL_REPLY_TO ? { replyTo: process.env.EMAIL_REPLY_TO } : {})
+    });
+    return Boolean(result.messageId);
+  }
+
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) return false;
@@ -225,7 +252,7 @@ export function createApp(db) {
   app.get('/api/auth/config', (_req, res) => {
     res.json({
       google: { enabled: Boolean(googleClientId), client_id: googleClientId || null },
-      email_notifications: Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM)
+      email_notifications: emailNotificationsEnabled()
     });
   });
 
