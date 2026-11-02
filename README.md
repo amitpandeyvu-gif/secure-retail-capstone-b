@@ -8,6 +8,16 @@ uses accessible HTML, responsive CSS and browser JavaScript with an Express 5 AP
 and SQLite through Node's built-in `node:sqlite` module. No separate database
 service is needed.
 
+## Live deployment
+
+The repository is configured for Vercel's Node.js runtime. Vercel serves the
+responsive pages from `public/` and runs the exported Express application for the
+API. The hosted assessment demonstration initialises a seeded SQLite database in
+the function's temporary storage. Catalogue browsing, customer sign-in, checkout,
+tracking and the administrator workflow are available, but hosted changes may reset
+after a serverless restart. Local and Codespaces runs keep their SQLite data in
+`data/retail.db`.
+
 ## Run from GitHub
 
 Select **Open in GitHub Codespaces** above, choose **Create codespace**, and wait
@@ -58,7 +68,8 @@ The database file is `data/retail.db` (created by `db:init`, excluded from Git).
 The SQL scripts and lockfile allow another developer to recreate the environment.
 Run `npm run db:inspect` to inspect sample rows and database integrity.
 
-`HOST`, `PORT`, `DATABASE_PATH`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` may be set as environment variables.
+`HOST`, `PORT`, `DATABASE_PATH`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` and
+`ADMIN_SESSION_SECRET` may be set as environment variables.
 `.env.example` documents defaults; `.env` files are not automatically loaded.
 
 For local assessment demonstration, the administrator login is

@@ -1,6 +1,6 @@
 import express from 'express';
 import { resolve } from 'node:path';
-import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { projectRoot } from './database.js';
 
 function positiveInteger(value) {
@@ -37,11 +37,32 @@ function validMoney(value) {
   return Number.isInteger(value) && value >= 0 && value <= 100000000;
 }
 
+function signAdminSession(email, expiresAt, secret) {
+  const payload = Buffer.from(JSON.stringify({ email, expiresAt })).toString('base64url');
+  const signature = createHmac('sha256', secret).update(payload).digest('base64url');
+  return `${payload}.${signature}`;
+}
+
+function readAdminSession(token, secret) {
+  if (typeof token !== 'string') return null;
+  const [payload, signature, extra] = token.split('.');
+  if (!payload || !signature || extra) return null;
+  const expected = createHmac('sha256', secret).update(payload).digest('base64url');
+  if (!safeMatch(signature, expected)) return null;
+  try {
+    const session = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (!validEmail(session.email) || !Number.isFinite(session.expiresAt) || session.expiresAt < Date.now()) return null;
+    return session;
+  } catch {
+    return null;
+  }
+}
+
 export function createApp(db) {
   const app = express();
-  const adminSessions = new Map();
   const adminEmail = (process.env.ADMIN_EMAIL || 'admin@popculture.com').toLowerCase();
   const adminPassword = process.env.ADMIN_PASSWORD || 'Admin123!';
+  const adminSessionSecret = process.env.ADMIN_SESSION_SECRET || `local-${adminPassword}`;
   app.disable('x-powered-by');
   app.use(express.json({ limit: '32kb' }));
   app.use((_req, res, next) => {
@@ -163,9 +184,8 @@ export function createApp(db) {
 
   function requireAdmin(req, res, next) {
     const token = req.get('authorization')?.replace(/^Bearer\s+/i, '');
-    const session = token && adminSessions.get(token);
-    if (!session || session.expiresAt < Date.now()) {
-      if (token) adminSessions.delete(token);
+    const session = readAdminSession(token, adminSessionSecret);
+    if (!session) {
       return res.status(401).json({ error: 'Administrator sign-in required' });
     }
     req.admin = session;
@@ -178,15 +198,12 @@ export function createApp(db) {
     if (!safeMatch(email, adminEmail) || !safeMatch(password, adminPassword)) {
       return res.status(401).json({ error: 'Incorrect administrator email or password' });
     }
-    const token = randomUUID();
     const expiresAt = Date.now() + (8 * 60 * 60 * 1000);
-    adminSessions.set(token, { email, expiresAt });
+    const token = signAdminSession(email, expiresAt, adminSessionSecret);
     res.json({ token, admin: { email }, expires_at: new Date(expiresAt).toISOString() });
   });
 
-  app.post('/api/admin/logout', requireAdmin, (req, res) => {
-    const token = req.get('authorization').replace(/^Bearer\s+/i, '');
-    adminSessions.delete(token);
+  app.post('/api/admin/logout', requireAdmin, (_req, res) => {
     res.json({ message: 'Signed out' });
   });
 
