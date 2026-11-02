@@ -23,6 +23,8 @@ const state = {
   cart: readStore('pc-cart', []),
   wishlist: readStore('pc-wishlist', []),
   user: readStore('pc-user', null),
+  authToken: readStore('pc-auth-token', null),
+  authConfig: null,
   activeProduct: null,
   selectedVariant: null
 };
@@ -42,7 +44,11 @@ function writeStore(key, value) {
 
 async function api(path, options) {
   const response = await fetch(path, {
-    headers: { 'Content-Type': 'application/json', ...(options?.headers || {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(state.authToken ? { Authorization: `Bearer ${state.authToken}` } : {}),
+      ...(options?.headers || {})
+    },
     ...options
   });
   const body = await response.json().catch(() => ({}));
@@ -289,10 +295,14 @@ function updateAccountLabel() {
 async function openAccount() {
   const container = $('#account-content');
   if (!state.user) {
-    container.innerHTML = `<p class="eyebrow">Your account</p><h2>Sign in with email</h2><p class="account-intro">Enter any valid email address to create or access your demo account. No password is required for this assessment storefront.</p>
-      <form class="account-form" id="login-form"><label>Name<input name="name" required maxlength="80" autocomplete="name" placeholder="Your name"></label><label>Email address<input name="email" type="email" required maxlength="254" autocomplete="email" placeholder="you@example.com"></label><p class="form-error" id="login-error" role="alert"></p><button class="button button-dark" type="submit">Continue with email</button></form>`;
+    state.authConfig ||= await api('/api/auth/config');
+    const googleEnabled = state.authConfig.google.enabled;
+    container.innerHTML = googleEnabled
+      ? `<p class="eyebrow">Your account</p><h2>Sign in securely</h2><p class="account-intro">Use your Google account to access your bag, checkout and order history. A security email is sent after sign-in.</p><div id="google-signin"></div><p class="form-error" id="login-error" role="alert"></p>`
+      : `<p class="eyebrow">Your account</p><h2>Sign in with email</h2><p class="account-intro">Google sign-in is not configured in this local demonstration. Enter a valid email address to continue.</p><form class="account-form" id="login-form"><label>Name<input name="name" required maxlength="80" autocomplete="name" placeholder="Your name"></label><label>Email address<input name="email" type="email" required maxlength="254" autocomplete="email" placeholder="you@example.com"></label><p class="form-error" id="login-error" role="alert"></p><button class="button button-dark" type="submit">Continue with email</button></form>`;
     $('#account-modal').showModal();
-    $('#login-form').addEventListener('submit', login);
+    if (googleEnabled) await renderGoogleButton(state.authConfig.google.client_id);
+    else $('#login-form').addEventListener('submit', login);
     return;
   }
   container.innerHTML = `<p class="eyebrow">Your account</p><h2>Welcome back</h2><div class="account-profile"><span class="profile-avatar">${escapeHTML(state.user.name.slice(0, 1).toUpperCase())}</span><div><strong>${escapeHTML(state.user.name)}</strong><br><small>${escapeHTML(state.user.email)}</small></div></div><div class="account-actions"><button class="button button-dark" id="refresh-orders" type="button">Refresh orders</button><button class="button" id="sign-out" type="button">Sign out</button></div><h3>Order history</h3><div class="orders-list" id="orders-list"><p>Loading orders…</p></div>`;
@@ -308,9 +318,11 @@ async function login(event) {
   const error = $('#login-error');
   error.textContent = '';
   try {
-    const { user } = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ name: form.get('name'), email: form.get('email') }) });
+    const { user, token } = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ name: form.get('name'), email: form.get('email') }) });
     state.user = user;
+    state.authToken = token;
     writeStore('pc-user', user);
+    writeStore('pc-auth-token', token);
     await mergeAccountCart();
     updateAccountLabel();
     $('#account-modal').close();
@@ -318,9 +330,61 @@ async function login(event) {
   } catch (requestError) { error.textContent = requestError.message; }
 }
 
+function loadGoogleIdentity() {
+  if (window.google?.accounts?.id) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-google-identity]');
+    if (existing) {
+      existing.addEventListener('load', resolve, { once: true });
+      existing.addEventListener('error', () => reject(new Error('Google sign-in could not load')), { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.dataset.googleIdentity = 'true';
+    script.addEventListener('load', resolve, { once: true });
+    script.addEventListener('error', () => reject(new Error('Google sign-in could not load')), { once: true });
+    document.head.append(script);
+  });
+}
+
+async function renderGoogleButton(clientId) {
+  const error = $('#login-error');
+  try {
+    await loadGoogleIdentity();
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: async response => {
+        error.textContent = '';
+        try {
+          const result = await api('/api/auth/google', { method: 'POST', body: JSON.stringify({ credential: response.credential }) });
+          state.user = result.user;
+          state.authToken = result.token;
+          writeStore('pc-user', result.user);
+          writeStore('pc-auth-token', result.token);
+          await mergeAccountCart();
+          updateAccountLabel();
+          $('#account-modal').close();
+          toast(result.email_sent ? `Welcome, ${result.user.name}. Sign-in email sent.` : `Welcome, ${result.user.name}`);
+        } catch (requestError) {
+          error.textContent = requestError.message;
+        }
+      }
+    });
+    window.google.accounts.id.renderButton($('#google-signin'), { theme: 'outline', size: 'large', width: 320, text: 'continue_with' });
+  } catch (loadError) {
+    error.textContent = loadError.message;
+  }
+}
+
 function logout() {
   state.user = null;
+  state.authToken = null;
   localStorage.removeItem('pc-user');
+  localStorage.removeItem('pc-auth-token');
+  window.google?.accounts?.id?.disableAutoSelect();
   updateAccountLabel();
   $('#account-modal').close();
   toast('Signed out');

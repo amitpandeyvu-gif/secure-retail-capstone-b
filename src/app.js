@@ -1,7 +1,10 @@
 import express from 'express';
 import { resolve } from 'node:path';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { projectRoot } from './database.js';
+
+const googleKeys = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
 
 function positiveInteger(value) {
   return typeof value === 'string' && /^[1-9]\d*$/.test(value) && Number.isSafeInteger(Number(value));
@@ -58,11 +61,35 @@ function readAdminSession(token, secret) {
   }
 }
 
+function safeEmailHtml(value) {
+  return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+}
+
+async function sendLoginEmail({ email, name }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM;
+  if (!apiKey || !from) return false;
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      from,
+      to: [email],
+      subject: 'You signed in to Pop Culture Clothing',
+      html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#171717"><h1 style="font-size:24px">Welcome, ${safeEmailHtml(name)}</h1><p>Your Google account was used to sign in to Pop Culture Clothing.</p><p>If this was not you, please secure your Google account.</p><hr style="border:0;border-top:1px solid #ddd"><p style="font-size:12px;color:#666">Pop Culture Clothing · Assessment storefront</p></div>`
+    })
+  });
+  if (!response.ok) throw new Error(`Email provider returned ${response.status}`);
+  return true;
+}
+
 export function createApp(db) {
   const app = express();
   const adminEmail = (process.env.ADMIN_EMAIL || 'admin@popculture.com').toLowerCase();
   const adminPassword = process.env.ADMIN_PASSWORD || 'Admin123!';
   const adminSessionSecret = process.env.ADMIN_SESSION_SECRET || `local-${adminPassword}`;
+  const customerSessionSecret = process.env.CUSTOMER_SESSION_SECRET || adminSessionSecret;
+  const googleClientId = process.env.GOOGLE_CLIENT_ID || '';
   app.disable('x-powered-by');
   app.use(express.json({ limit: '32kb' }));
   app.use((_req, res, next) => {
@@ -81,6 +108,13 @@ export function createApp(db) {
   app.get('/api/health', (_req, res) => {
     db.prepare('SELECT 1').get();
     res.json({ status: 'ok', database: 'connected', currency: 'AUD' });
+  });
+
+  app.get('/api/auth/config', (_req, res) => {
+    res.json({
+      google: { enabled: Boolean(googleClientId), client_id: googleClientId || null },
+      email_notifications: Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM)
+    });
   });
 
   app.get('/api/categories', (_req, res) => {
@@ -123,13 +157,45 @@ export function createApp(db) {
   });
 
   app.post('/api/auth/login', (req, res) => {
+    if (googleClientId && process.env.ALLOW_DEMO_LOGIN !== '1') {
+      return res.status(403).json({ error: 'Use Google to sign in' });
+    }
     const email = validEmail(req.body?.email) ? normaliseEmail(req.body.email) : null;
     const name = cleanText(req.body?.name || email?.split('@')[0] || '', 1, 80);
     if (!email) return res.status(400).json({ error: 'Enter a valid email address' });
     if (!name) return res.status(400).json({ error: 'Name must be between 1 and 80 characters' });
     const user = upsertUser(db, email, name);
     db.prepare('INSERT OR IGNORE INTO carts(user_id) VALUES (?)').run(user.id);
-    res.json({ user, message: `Welcome, ${user.name}` });
+    const token = signAdminSession(user.email, Date.now() + (8 * 60 * 60 * 1000), customerSessionSecret);
+    res.json({ user, token, message: `Welcome, ${user.name}` });
+  });
+
+  app.post('/api/auth/google', async (req, res) => {
+    if (!googleClientId) return res.status(503).json({ error: 'Google sign-in is not configured' });
+    const credential = typeof req.body?.credential === 'string' ? req.body.credential : '';
+    if (!credential || credential.length > 10000) return res.status(400).json({ error: 'Google credential is required' });
+    try {
+      const { payload } = await jwtVerify(credential, googleKeys, {
+        audience: googleClientId,
+        issuer: ['https://accounts.google.com', 'accounts.google.com']
+      });
+      const email = payload.email_verified && validEmail(payload.email) ? normaliseEmail(payload.email) : null;
+      const name = cleanText(payload.name || payload.given_name || email?.split('@')[0] || '', 1, 80);
+      if (!email || !name) return res.status(401).json({ error: 'Google did not provide a verified account' });
+      const user = upsertUser(db, email, name);
+      db.prepare('INSERT OR IGNORE INTO carts(user_id) VALUES (?)').run(user.id);
+      const token = signAdminSession(user.email, Date.now() + (8 * 60 * 60 * 1000), customerSessionSecret);
+      let emailSent = false;
+      try {
+        emailSent = await sendLoginEmail(user);
+      } catch (error) {
+        console.error('Login email failed:', error.message);
+      }
+      res.json({ user, token, email_sent: emailSent, message: `Welcome, ${user.name}` });
+    } catch (error) {
+      console.error('Google sign-in failed:', error.code || error.message);
+      res.status(401).json({ error: 'Google sign-in could not be verified' });
+    }
   });
 
   const cartItemsQuery = db.prepare(`SELECT ci.variant_id, ci.quantity, v.product_id, v.size, v.colour, v.stock,

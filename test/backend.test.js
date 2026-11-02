@@ -49,7 +49,13 @@ test('HTTP routes query SQLite and reject invalid requests', async () => {
       assert.equal((await get(path))[0], 400, path);
     }
     assert.equal((await get('/api/products?q=%27%20OR%201%3D1--'))[1].count, 0);
-    assert.equal((await post('/api/auth/login', { name: 'Amit Pandey', email: 'amit@example.com' }))[0], 200);
+    const authConfig = await get('/api/auth/config');
+    assert.equal(authConfig[0], 200);
+    assert.equal(authConfig[1].google.enabled, false);
+    assert.equal((await post('/api/auth/google', { credential: 'invalid' }))[0], 503);
+    const customerLogin = await post('/api/auth/login', { name: 'Amit Pandey', email: 'amit@example.com' });
+    assert.equal(customerLogin[0], 200);
+    assert.match(customerLogin[1].token, /^[^.]+\.[^.]+$/);
     assert.equal((await post('/api/auth/login', { name: 'Amit', email: 'not-an-email' }))[0], 400);
     const savedCart = await fetch(base + '/api/cart', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Amit Pandey', email: 'amit@example.com', items: [{ variant_id: 1, quantity: 1 }] }) });
     assert.equal(savedCart.status, 200);

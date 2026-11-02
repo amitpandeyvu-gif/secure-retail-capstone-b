@@ -54,7 +54,7 @@ http://127.0.0.1:3000/admin.html.
 | Requirement | Implementation |
 |---|---|
 | Product catalogue | Searchable products, categories, prices, images and live variant stock |
-| Customer access | Any valid email opens a demonstration customer account |
+| Customer access | Verified Google sign-in when configured, with an email-only local fallback |
 | Shopping cart | Local cart for guests and a persistent SQLite cart after sign-in |
 | Checkout | Validated delivery details, server-calculated totals and transactional stock reduction |
 | Payments | Safe fictional payment record with status, amount and unique reference; no card data |
@@ -93,7 +93,9 @@ email-only demonstration flow requested for the storefront.
 | `/api/products?category=2&q=hoodie` | Optional category ID and name filters |
 | `/api/products/1` | One product; 404 if absent |
 | `/api/products/1/variants` | Size, colour and stock for one product |
-| `POST /api/auth/login` | Creates or returns a demo account from a valid email |
+| `GET /api/auth/config` | Reports whether Google sign-in and email notification are configured |
+| `POST /api/auth/google` | Verifies a Google ID token and creates or returns the customer |
+| `POST /api/auth/login` | Local-only fallback that creates or returns a demo account |
 | `GET/PUT /api/cart` | Loads or synchronises a signed-in customer's persistent cart |
 | `POST /api/orders` | Validates an order, stores it and reduces variant stock |
 | `GET /api/orders?email=...` | Returns order history for a demo account |
@@ -134,8 +136,12 @@ it is separate from the product API and is for local assessment screenshots only
 Capture the real running server terminal, localhost response and your actual
 Sprint 3 GitHub commits. Existing team history is not proof of a new contribution.
 
-The customer email sign-in and payment selection are intentionally demonstration features.
-Any valid email may be used and no password or real payment details are collected.
+Customer sign-in supports Google Identity Services when `GOOGLE_CLIENT_ID` is
+configured. The server verifies Google's signed ID token before creating the local
+customer record. When `RESEND_API_KEY` and a verified `EMAIL_FROM` sender are set,
+the customer receives a sign-in notification email. Without Google configuration,
+local development retains the email-only assessment demonstration. No passwords or
+real payment details are collected.
 Orders, order items, tracking history and stock updates are stored in SQLite for functional testing.
 The admin session is separate, password-protected and held in server memory; use a
 managed identity provider and persistent secure sessions before production use.
