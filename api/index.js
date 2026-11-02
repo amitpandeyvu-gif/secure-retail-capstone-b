@@ -5,6 +5,7 @@ export default function handler(req, res) {
   const routedPath = requestUrl.searchParams.get('__path');
   if (routedPath !== null) {
     requestUrl.searchParams.delete('__path');
+    requestUrl.searchParams.delete('path');
     const query = requestUrl.searchParams.toString();
     req.url = `/api${routedPath ? `/${routedPath}` : ''}${query ? `?${query}` : ''}`;
   }
