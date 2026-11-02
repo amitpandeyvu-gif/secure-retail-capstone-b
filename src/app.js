@@ -85,8 +85,8 @@ async function sendLoginEmail({ email, name }) {
 
 export function createApp(db) {
   const app = express();
-  const adminEmail = (process.env.ADMIN_EMAIL || 'admin@popculture.com').toLowerCase();
-  const adminPassword = process.env.ADMIN_PASSWORD || 'Admin123!';
+  const adminEmail = (process.env.ADMIN_EMAIL || 'admin@gmail.com').toLowerCase();
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin@123';
   const adminSessionSecret = process.env.ADMIN_SESSION_SECRET || `local-${adminPassword}`;
   const customerSessionSecret = process.env.CUSTOMER_SESSION_SECRET || adminSessionSecret;
   const googleClientId = process.env.GOOGLE_CLIENT_ID || '';

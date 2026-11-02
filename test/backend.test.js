@@ -74,8 +74,8 @@ test('HTTP routes query SQLite and reject invalid requests', async () => {
     const contact = await post('/api/contact', { name: 'Amit Pandey', email: 'amit@example.com', subject: 'Order support', message: 'Please help with my demonstration order.' });
     assert.equal(contact[0], 201);
     assert.equal((await get('/api/admin/dashboard'))[0], 401);
-    assert.equal((await post('/api/admin/login', { email: 'admin@popculture.com', password: 'wrong' }))[0], 401);
-    const adminLogin = await post('/api/admin/login', { email: 'admin@popculture.com', password: 'Admin123!' });
+    assert.equal((await post('/api/admin/login', { email: 'admin@gmail.com', password: 'wrong' }))[0], 401);
+    const adminLogin = await post('/api/admin/login', { email: 'admin@gmail.com', password: 'admin@123' });
     assert.equal(adminLogin[0], 200);
     const admin = async (path, method = 'GET', body) => {
       const response = await fetch(base + path, { method, headers: { authorization: `Bearer ${adminLogin[1].token}`, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });

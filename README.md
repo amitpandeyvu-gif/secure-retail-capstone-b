@@ -81,7 +81,7 @@ Run `npm run db:inspect` to inspect sample rows and database integrity.
 `.env.example` documents defaults; `.env` files are not automatically loaded.
 
 For local assessment demonstration, the administrator login is
-`admin@popculture.com` with password `Admin123!`. Change both environment values
+`admin@gmail.com` with password `admin@123`. Change both environment values
 before sharing or deploying the application. Customer accounts use verified Google
 sign-in in the hosted deployment. Local development keeps an email-only fallback
 when `GOOGLE_CLIENT_ID` is not set.
