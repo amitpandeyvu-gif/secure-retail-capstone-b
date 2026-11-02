@@ -4,5 +4,12 @@ data/*.db
 data/*.db-*
 coverage/
 output/
+dist/
+*.log
+.DS_Store
+Thumbs.db
+presentation_build/
+.codex-finalizer/
 .vercel
 .env*
+!.env.example

@@ -1,0 +1,19 @@
+{
+  "name": "popculture-sprint3-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.cjs",
+    "check": "node --check server.cjs"
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "sqlite3": "^6.0.1"
+  },
+  "description": "Express and SQLite backend for the Pop Culture Clothing capstone",
+  "main": "server.cjs",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

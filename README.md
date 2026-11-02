@@ -159,10 +159,16 @@ the customer receives a sign-in notification and a professional itemised receipt
 after placing an order. The receipt includes subtotal, shipping, total, delivery
 details, payment reference and a direct tracking link. `EMAIL_REPLY_TO` is optional,
 and `PUBLIC_APP_URL` controls the tracking link. Email failure never prevents sign-in
-or checkout. Without Google
-configuration, local development retains the email-only assessment demonstration. No passwords or
-real payment details are collected.
+or checkout. Without Google configuration, local development retains the email-only
+assessment demonstration. No passwords or real payment details are collected.
 Orders, payment references and tracking history use shared Upstash storage in the
 hosted deployment; SQLite remains the local functional-test and catalogue database.
 The admin session is separate, password-protected and held in server memory; use a
 managed identity provider and persistent secure sessions before production use.
+
+## Integrated assessment evidence
+
+The final branch also retains the earlier React catalogue, Sprint 4 API exercise,
+Postman collection, database screenshots, final presentation and team evidence from
+`main`. These remain as assessment artefacts; the deployed Express application at the
+production URL is the canonical runnable storefront.
