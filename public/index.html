@@ -229,11 +229,17 @@
           <legend>Payment method</legend>
           <label class="payment-option"><input type="radio" name="payment" checked><span><strong>Demo card payment</strong><small>No card details required for this assessment.</small></span></label>
         </fieldset>
+        <p class="checkout-note"><strong>Guest checkout is available.</strong> Google sign-in is optional and is only needed to keep an account across devices.</p>
         <p class="form-error" id="checkout-error" role="alert"></p>
         <button class="button button-dark button-full" type="submit">Place order</button>
       </form>
       <div class="checkout-summary"><h3>Order summary</h3><div id="checkout-items"></div><div id="checkout-totals"></div></div>
     </div>
+  </dialog>
+
+  <dialog class="modal success-modal" id="order-success-modal">
+    <button class="close-button modal-close" data-dialog-close aria-label="Close order confirmation">×</button>
+    <div class="modal-content" id="order-success-content"></div>
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>

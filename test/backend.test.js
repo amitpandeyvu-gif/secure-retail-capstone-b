@@ -1,20 +1,31 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { readFileSync } from 'node:fs';
 import { createApp } from '../src/app.js';
 import { initialiseDatabase } from '../src/database.js';
+
+test('guest checkout does not depend on the disabled production demo login', () => {
+  const source = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
+  const start = source.indexOf('async function placeOrder');
+  const end = source.indexOf('\nasync function loadCatalogue', start);
+  const checkout = source.slice(start, end);
+  assert.ok(start > -1 && end > start);
+  assert.doesNotMatch(checkout, /\/api\/auth\/login/);
+  assert.match(checkout, /showOrderSuccess/);
+});
 
 test('database constraints and seed data', () => {
   const db = initialiseDatabase(':memory:');
   try {
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM products').get().n, 6);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM variants').get().n, 11);
-    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users').get().n, 0);
-    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM carts').get().n, 0);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users').get().n, 1);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM carts').get().n, 1);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM cart_items').get().n, 0);
-    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM orders').get().n, 0);
-    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM order_status_history').get().n, 0);
-    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM payments').get().n, 0);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM orders').get().n, 2);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM order_status_history').get().n, 7);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM payments').get().n, 2);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM contact_messages').get().n, 0);
     assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
     assert.throws(() => db.prepare('UPDATE products SET price_cents = -1 WHERE id = 1').run());
@@ -96,7 +107,7 @@ test('HTTP routes query SQLite and reject invalid requests', async () => {
     assert.equal(tracking[1].order.payment_status, 'Succeeded');
     assert.equal(tracking[1].order.history[0].status, 'Confirmed');
     assert.equal((await get(`/api/orders/${order[1].order.id}/tracking?email=wrong%40example.com`))[0], 404);
-    assert.equal((await admin('/api/admin/orders'))[1].data.length, 1);
+    assert.equal((await admin('/api/admin/orders'))[1].data.length, 3);
     assert.equal((await admin(`/api/admin/orders/${order[1].order.id}`, 'PATCH', { status: 'Packed' }))[0], 200);
     const packedTracking = await get(`/api/orders/${order[1].order.id}/tracking?email=amit%40example.com`);
     assert.equal(packedTracking[1].order.status, 'Packed');

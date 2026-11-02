@@ -6,6 +6,10 @@ The storefront provides a responsive shopping experience backed by the existing
 Express and SQLite application. Customers can browse the live product catalogue,
 search and filter products, sort results, choose a size and colour, save favourites,
 manage bag quantities and complete a demonstration checkout.
+Checkout works for guests as well as signed-in customers. After a successful order,
+the customer receives a confirmation screen with direct links to order history and
+tracking. The account view also provides a clearly labelled sample history with two
+fictional orders for assessment demonstration.
 Customers can also track an order using its order number and checkout email. The
 tracking view shows Confirmed, Packed, Shipped and Delivered stages, item details
 and status timestamps recorded when an administrator changes fulfilment status.

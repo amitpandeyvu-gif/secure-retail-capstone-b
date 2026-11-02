@@ -297,12 +297,14 @@ async function openAccount() {
   if (!state.user) {
     state.authConfig ||= await api('/api/auth/config');
     const googleEnabled = state.authConfig.google.enabled;
+    const demoOrders = `<div class="demo-account"><span>or</span><button class="button" id="demo-orders" type="button">View sample order history</button><small>Explore two fictional orders without signing in.</small></div>`;
     container.innerHTML = googleEnabled
-      ? `<p class="eyebrow">Your account</p><h2>Sign in securely</h2><p class="account-intro">Use your Google account to access your bag, checkout and order history. Google verifies your account, and this website never receives your Google password.${state.authConfig?.email_notifications ? ' A security email is sent after sign-in.' : ''}</p><div id="google-signin"></div><p class="form-error" id="login-error" role="alert"></p>`
-      : `<p class="eyebrow">Your account</p><h2>Sign in with email</h2><p class="account-intro">Google sign-in is not configured in this local demonstration. Enter a valid email address to continue.</p><form class="account-form" id="login-form"><label>Name<input name="name" required maxlength="80" autocomplete="name" placeholder="Your name"></label><label>Email address<input name="email" type="email" required maxlength="254" autocomplete="email" placeholder="you@example.com"></label><p class="form-error" id="login-error" role="alert"></p><button class="button button-dark" type="submit">Continue with email</button></form>`;
+      ? `<p class="eyebrow">Your account</p><h2>Sign in securely</h2><p class="account-intro">Use your Google account to save your bag and return to your orders. Google verifies your account, and this website never receives your Google password.${state.authConfig?.email_notifications ? ' A security email is sent after sign-in.' : ''}</p><div id="google-signin"></div><p class="form-error" id="login-error" role="alert"></p>${demoOrders}`
+      : `<p class="eyebrow">Your account</p><h2>Sign in with email</h2><p class="account-intro">Google sign-in is not configured in this local demonstration. Enter a valid email address to continue.</p><form class="account-form" id="login-form"><label>Name<input name="name" required maxlength="80" autocomplete="name" placeholder="Your name"></label><label>Email address<input name="email" type="email" required maxlength="254" autocomplete="email" placeholder="you@example.com"></label><p class="form-error" id="login-error" role="alert"></p><button class="button button-dark" type="submit">Continue with email</button></form>${demoOrders}`;
     $('#account-modal').showModal();
     if (googleEnabled) await renderGoogleButton(state.authConfig.google.client_id);
     else $('#login-form').addEventListener('submit', login);
+    $('#demo-orders').addEventListener('click', openDemoOrders);
     return;
   }
   container.innerHTML = `<p class="eyebrow">Your account</p><h2>Welcome back</h2><div class="account-profile"><span class="profile-avatar">${escapeHTML(state.user.name.slice(0, 1).toUpperCase())}</span><div><strong>${escapeHTML(state.user.name)}</strong><br><small>${escapeHTML(state.user.email)}</small></div></div><div class="account-actions"><button class="button button-dark" id="refresh-orders" type="button">Refresh orders</button><button class="button" id="sign-out" type="button">Sign out</button></div><h3>Order history</h3><div class="orders-list" id="orders-list"><p>Loading orders…</p></div>`;
@@ -310,6 +312,16 @@ async function openAccount() {
   $('#sign-out').addEventListener('click', logout);
   $('#refresh-orders').addEventListener('click', loadOrders);
   await loadOrders();
+}
+
+async function openDemoOrders() {
+  state.user = { name: 'Demo Customer', email: 'demo@popculture.com', demo: true };
+  state.authToken = null;
+  writeStore('pc-user', state.user);
+  localStorage.removeItem('pc-auth-token');
+  updateAccountLabel();
+  $('#account-modal').close();
+  await openAccount();
 }
 
 async function login(event) {
@@ -466,6 +478,14 @@ function renderCheckoutSummary() {
   $('#checkout-totals').innerHTML = `<div class="checkout-total-row"><span>Subtotal</span><span>${money(subtotal)}</span></div><div class="checkout-total-row"><span>Shipping</span><span>${shipping ? money(shipping) : 'Free'}</span></div><div class="checkout-total-row total"><span>Total</span><span>${money(subtotal + shipping)}</span></div>`;
 }
 
+function showOrderSuccess(order, email) {
+  const content = $('#order-success-content');
+  content.innerHTML = `<div class="success-mark">✓</div><p class="eyebrow">Order confirmed</p><h2>Thanks for your order</h2><p>Your order <strong>#${order.id}</strong> has been recorded for <strong>${escapeHTML(email)}</strong>.</p><div class="success-total"><span>Total</span><strong>${money(order.total_cents)}</strong></div><p class="success-note">This assessment uses a fictional payment. No card details or real payment were collected.</p><div class="success-actions"><button class="button button-dark" id="success-orders" type="button">View order history</button><button class="button" id="success-track" type="button">Track this order</button></div>`;
+  $('#order-success-modal').showModal();
+  $('#success-orders').addEventListener('click', () => { $('#order-success-modal').close(); openAccount(); });
+  $('#success-track').addEventListener('click', () => { $('#order-success-modal').close(); openTracking(order.id); });
+}
+
 async function placeOrder(event) {
   event.preventDefault();
   const submit = event.currentTarget.querySelector('[type="submit"]');
@@ -480,14 +500,18 @@ async function placeOrder(event) {
       items: state.cart.map(item => ({ variant_id: item.variant_id, quantity: item.quantity }))
     };
     const { order } = await api('/api/orders', { method: 'POST', body: JSON.stringify(payload) });
-    const { user } = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ name: payload.name, email: payload.email }) });
-    state.user = user;
-    writeStore('pc-user', user);
+    const sameSignedInCustomer = state.user && state.authToken && state.user.email.toLowerCase() === payload.email.trim().toLowerCase();
+    if (!sameSignedInCustomer) {
+      state.user = { name: payload.name.trim(), email: payload.email.trim().toLowerCase(), guest: true };
+      state.authToken = null;
+      writeStore('pc-user', state.user);
+      localStorage.removeItem('pc-auth-token');
+    }
     state.cart = [];
-    saveCart();
+    saveCart(false);
     updateAccountLabel();
     $('#checkout-modal').close();
-    toast(`Order #${order.id} confirmed · ${money(order.total_cents)}`);
+    showOrderSuccess(order, payload.email);
     await loadCatalogue();
   } catch (requestError) { error.textContent = requestError.message; }
   finally { submit.disabled = false; submit.textContent = 'Place order'; }

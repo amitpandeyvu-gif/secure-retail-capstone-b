@@ -62,11 +62,11 @@ http://127.0.0.1:3000/admin.html.
 | Requirement | Implementation |
 |---|---|
 | Product catalogue | Searchable products, categories, prices, images and live variant stock |
-| Customer access | Verified Google sign-in when configured, with an email-only local fallback |
+| Customer access | Optional verified Google sign-in, guest checkout and an email-only local fallback |
 | Shopping cart | Local cart for guests and a persistent SQLite cart after sign-in |
-| Checkout | Validated delivery details, server-calculated totals and transactional stock reduction |
+| Checkout | Guest-friendly validated delivery details, confirmation screen, server totals and transactional stock reduction |
 | Payments | Safe fictional payment record with status, amount and unique reference; no card data |
-| Orders | Order history, item details and administrator fulfilment controls |
+| Orders | Real checkout history, two fictional sample orders, item details and administrator fulfilment controls |
 | Tracking | Email-verified timeline with status history and payment confirmation |
 | Administration | Dashboard, product CRUD, variant CRUD, stock, orders, customers, payments and support |
 | Customer information | About, Contact, Delivery, Returns and Sizing pages |
