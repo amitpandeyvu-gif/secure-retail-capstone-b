@@ -2,6 +2,7 @@
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/amitpandeyvu-gif/secure-retail-capstone-b?ref=codex%2Fsprint3-backend)
 [![Backend tests](https://github.com/amitpandeyvu-gif/secure-retail-capstone-b/actions/workflows/ci.yml/badge.svg?branch=codex%2Fsprint3-backend)](https://github.com/amitpandeyvu-gif/secure-retail-capstone-b/actions/workflows/ci.yml)
+[![Live on Vercel](https://img.shields.io/badge/Vercel-Live-000000?logo=vercel)](https://pop-culture-clothing-capstone.vercel.app)
 
 Full-stack clothing storefront for the Pop Culture Clothing capstone. The project
 uses accessible HTML, responsive CSS and browser JavaScript with an Express 5 API
@@ -9,6 +10,9 @@ and SQLite through Node's built-in `node:sqlite` module. No separate database
 service is needed.
 
 ## Live deployment
+
+**Storefront:** https://pop-culture-clothing-capstone.vercel.app  
+**Administration:** https://pop-culture-clothing-capstone.vercel.app/admin.html
 
 The repository is configured for Vercel's Node.js runtime. Vercel serves the
 responsive pages from `public/` and runs the exported Express application for the
