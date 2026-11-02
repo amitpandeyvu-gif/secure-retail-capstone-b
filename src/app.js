@@ -149,10 +149,14 @@ async function sendStoreEmail({ to, subject, html }) {
       from,
       to: [to],
       subject,
-      html
+      html,
+      ...(process.env.EMAIL_REPLY_TO ? { reply_to: process.env.EMAIL_REPLY_TO } : {})
     })
   });
-  if (!response.ok) throw new Error(`Email provider returned ${response.status}`);
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(`Email provider returned ${response.status}: ${details.slice(0, 180)}`);
+  }
   return true;
 }
 
@@ -167,10 +171,12 @@ async function sendLoginEmail({ email, name }) {
 async function sendOrderReceipt({ email, name, order, items, address, city, postcode, transactionRef }) {
   const money = cents => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(cents / 100);
   const itemRows = items.map(item => `<tr><td style="padding:10px 0;border-bottom:1px solid #eee">${item.quantity}× ${safeEmailHtml(item.name)}<br><span style="font-size:12px;color:#666">${safeEmailHtml(item.size)} · ${safeEmailHtml(item.colour)}</span></td><td style="padding:10px 0;border-bottom:1px solid #eee;text-align:right">${money(item.price_cents * item.quantity)}</td></tr>`).join('');
+  const baseUrl = (process.env.PUBLIC_APP_URL || 'https://pop-culture-clothing-capstone.vercel.app').replace(/\/$/, '');
+  const trackingUrl = `${baseUrl}/?track=${order.id}&email=${encodeURIComponent(email)}`;
   return sendStoreEmail({
     to: email,
-    subject: `Receipt for Pop Culture order #${order.id}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#171717"><div style="padding:20px 24px;background:#111;color:#fff"><strong style="letter-spacing:.12em">POP CULTURE</strong></div><div style="padding:28px 24px;border:1px solid #ddd;border-top:0"><p style="margin:0 0 8px;color:#db351b;font-size:12px;font-weight:700;letter-spacing:.1em">ORDER CONFIRMED</p><h1 style="margin:0 0 14px;font-size:26px">Thanks for your order, ${safeEmailHtml(name)}</h1><p style="line-height:1.6">We received demonstration order <strong>#${order.id}</strong>. Keep this email and use the order number with <strong>${safeEmailHtml(email)}</strong> on the tracking page.</p><table style="width:100%;border-collapse:collapse;margin:20px 0">${itemRows}<tr><td style="padding-top:14px;font-weight:700">Total</td><td style="padding-top:14px;text-align:right;font-weight:700">${money(order.total_cents)}</td></tr></table><h2 style="margin:26px 0 8px;font-size:17px">Delivery details</h2><p style="margin:0;line-height:1.6">${safeEmailHtml(name)}<br>${safeEmailHtml(address)}<br>${safeEmailHtml(city)} ${safeEmailHtml(postcode)}</p><p style="margin-top:20px;font-size:13px;color:#666">Demo payment status: Succeeded<br>Reference: ${safeEmailHtml(transactionRef)}</p><div style="margin-top:24px;padding:14px;background:#f5f4f1;font-size:13px;line-height:1.5"><strong>Assessment demonstration:</strong> no real payment was taken and no physical parcel will be dispatched.</div></div></div>`
+    subject: `Order #${order.id} confirmed — your Pop Culture receipt`,
+    html: `<div style="display:none;max-height:0;overflow:hidden">Your order #${order.id} is confirmed. View your items, total and tracking details.</div><div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#171717;background:#fff"><div style="padding:22px 26px;background:#111;color:#fff"><strong style="letter-spacing:.14em">POP CULTURE CLOTHING</strong></div><div style="padding:30px 26px;border:1px solid #ddd;border-top:0"><p style="margin:0 0 8px;color:#c9341f;font-size:12px;font-weight:700;letter-spacing:.1em">ORDER CONFIRMED · #${order.id}</p><h1 style="margin:0 0 14px;font-size:28px;line-height:1.15">Thanks for your order, ${safeEmailHtml(name)}</h1><p style="margin:0;line-height:1.65;color:#444">We have received your order. You ordered the following items:</p><table role="presentation" style="width:100%;border-collapse:collapse;margin:22px 0">${itemRows}<tr><td style="padding-top:12px;color:#666">Subtotal</td><td style="padding-top:12px;text-align:right">${money(order.subtotal_cents)}</td></tr><tr><td style="padding-top:8px;color:#666">Shipping</td><td style="padding-top:8px;text-align:right">${order.shipping_cents ? money(order.shipping_cents) : 'Free'}</td></tr><tr><td style="padding-top:14px;border-top:1px solid #171717;font-size:18px;font-weight:700">Total</td><td style="padding-top:14px;border-top:1px solid #171717;text-align:right;font-size:18px;font-weight:700">${money(order.total_cents)}</td></tr></table><h2 style="margin:28px 0 8px;font-size:18px">Delivery details</h2><p style="margin:0;line-height:1.65">${safeEmailHtml(name)}<br>${safeEmailHtml(address)}<br>${safeEmailHtml(city)} ${safeEmailHtml(postcode)}</p><p style="margin:22px 0;font-size:13px;line-height:1.6;color:#666">Payment status: Succeeded<br>Reference: ${safeEmailHtml(transactionRef)}</p><p style="margin:26px 0"><a href="${safeEmailHtml(trackingUrl)}" style="display:inline-block;padding:14px 22px;background:#111;color:#fff;text-decoration:none;font-weight:700">Track order #${order.id}</a></p><p style="font-size:13px;line-height:1.6;color:#666">Keep this email as your receipt. Tracking requires order number <strong>#${order.id}</strong> and <strong>${safeEmailHtml(email)}</strong>.</p><div style="margin-top:24px;padding:14px;border:1px solid #ddd;background:#f5f4f1;font-size:13px;line-height:1.5"><strong>Assessment demonstration:</strong> no real payment was taken and no physical parcel will be dispatched.</div></div></div>`
   });
 }
 
