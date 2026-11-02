@@ -153,7 +153,10 @@ async function deleteVariant(id) {
 }
 
 async function loadOrders() {
-  state.orders = (await api('/api/admin/orders')).data;
+  const response = await api('/api/admin/orders');
+  state.orders = response.data;
+  $('#order-storage-status').textContent = response.persistent ? 'Shared order storage connected' : 'Local storage mode';
+  $('#order-storage-status').classList.toggle('connected', Boolean(response.persistent));
   const statuses = ['Confirmed','Packed','Shipped','Delivered','Cancelled'];
   $('#order-rows').innerHTML = state.orders.length ? state.orders.map(order => `<tr><td><strong>#${order.id}</strong></td><td><div class="customer-cell"><strong>${escapeHTML(order.customer_name)}</strong><small>${escapeHTML(order.email)}</small></div></td><td>${new Date(order.created_at + 'Z').toLocaleDateString('en-AU')}</td><td><strong>${money(order.total_cents)}</strong></td><td><select class="status-select" data-order-status="${order.id}">${statuses.map(status => `<option ${status === order.status ? 'selected' : ''}>${status}</option>`).join('')}</select></td></tr>`).join('') : '<tr><td class="empty-row" colspan="5">No orders yet. Place an order in the customer store to see it here.</td></tr>';
 }

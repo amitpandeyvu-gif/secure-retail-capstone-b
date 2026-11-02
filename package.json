@@ -16,6 +16,7 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@upstash/redis": "^1.40.0",
     "express": "^5.1.0",
     "jose": "^6.1.0"
   }

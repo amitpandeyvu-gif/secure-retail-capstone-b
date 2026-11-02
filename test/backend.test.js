@@ -28,8 +28,9 @@ test('unified login page keeps customer and administrator access separate', () =
 test('database constraints and seed data', () => {
   const db = initialiseDatabase(':memory:');
   try {
-    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM products').get().n, 6);
-    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM variants').get().n, 11);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM categories').get().n, 6);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM products').get().n, 20);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM variants').get().n, 49);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users').get().n, 1);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM carts').get().n, 1);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM cart_items').get().n, 0);
@@ -57,9 +58,9 @@ test('HTTP routes query SQLite and reject invalid requests', async () => {
   try {
     assert.equal((await get('/api'))[1].sprint, 3);
     assert.equal((await get('/api/health'))[1].database, 'connected');
-    assert.equal((await get('/api/categories'))[1].data.length, 3);
-    assert.equal((await get('/api/products'))[1].count, 6);
-    assert.equal((await get('/api/products?category=2'))[1].count, 2);
+    assert.equal((await get('/api/categories'))[1].data.length, 6);
+    assert.equal((await get('/api/products'))[1].count, 20);
+    assert.equal((await get('/api/products?category=2'))[1].count, 3);
     assert.equal((await get('/api/products?q=arcade'))[1].data[0].id, 2);
     assert.equal((await get('/api/products/1'))[1].data.stock, 27);
     assert.equal((await get('/api/products/1'))[1].data.price_cents, 2995);
@@ -92,8 +93,8 @@ test('HTTP routes query SQLite and reject invalid requests', async () => {
       const response = await fetch(base + path, { method, headers: { authorization: `Bearer ${adminLogin[1].token}`, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
       return [response.status, await response.json()];
     };
-    assert.equal((await admin('/api/admin/dashboard'))[1].summary.products, 6);
-    assert.equal((await admin('/api/admin/products'))[1].data.length, 6);
+    assert.equal((await admin('/api/admin/dashboard'))[1].summary.products, 20);
+    assert.equal((await admin('/api/admin/products'))[1].data.length, 20);
     const created = await admin('/api/admin/products', 'POST', { category_id: 3, sku: 'CAP-TEST-009', name: 'Test Cap', description: 'Admin test product', price_cents: 1595, material: 'Cotton', size_guide: 'Adjustable', size: 'ONE SIZE', colour: 'Black', stock: 5 });
     assert.equal(created[0], 201);
     assert.equal((await admin(`/api/admin/variants/${db.prepare("SELECT id FROM variants WHERE product_id = ?").get(created[1].id).id}`, 'PATCH', { stock: 9 }))[0], 200);

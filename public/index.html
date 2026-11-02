@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Pop Culture Clothing — graphic tees, hoodies and accessories with live stock from SQLite.">
+  <meta name="description" content="Pop Culture Clothing — T-shirts, shirts, pants, hoodies, caps and shoes with live stock and secure demonstration checkout.">
   <title>Pop Culture Clothing</title>
   <link rel="preconnect" href="https://images.unsplash.com">
   <link rel="stylesheet" href="/styles.css">
@@ -27,7 +27,7 @@
       </a>
       <form class="search" id="search-form" role="search">
         <label class="sr-only" for="search-input">Search products</label>
-        <input id="search-input" type="search" placeholder="Search tees, hoodies and accessories" autocomplete="off">
+        <input id="search-input" type="search" placeholder="Search T-shirts, shirts, pants and shoes" autocomplete="off">
         <button type="submit" aria-label="Search">⌕</button>
       </form>
       <div class="header-actions">
@@ -52,15 +52,13 @@
       <div class="shell nav-inner">
         <a href="#new">New in</a>
         <button data-category="all">Shop all</button>
-        <button data-category="1">Graphic tees</button>
+        <button data-category="1">T-Shirts</button>
+        <button data-category="4">Shirts</button>
+        <button data-category="5">Pants</button>
         <button data-category="2">Hoodies</button>
-        <button data-category="3">Accessories</button>
-        <a href="/about.html">About</a>
-        <a href="/help.html">Delivery & returns</a>
-        <a href="/contact.html">Contact</a>
-        <a href="#benefits">Why shop with us</a>
+        <button data-category="3">Caps</button>
+        <button data-category="6">Shoes</button>
         <button id="nav-track" type="button">Track order</button>
-        <a class="sale-link" href="#products">Trending now</a>
       </div>
     </nav>
   </header>
@@ -82,13 +80,22 @@
 
     <section class="category-strip shell" aria-label="Shop categories">
       <button class="category-card category-tees" data-category-jump="1">
-        <span>Graphic tees</span><small>Original artwork</small>
+        <span>T-Shirts</span><small>Everyday graphics and heavyweight basics</small>
+      </button>
+      <button class="category-card category-shirts" data-category-jump="4">
+        <span>Shirts</span><small>Relaxed layers and clean button-ups</small>
+      </button>
+      <button class="category-card category-pants" data-category-jump="5">
+        <span>Pants</span><small>Utility shapes and easy silhouettes</small>
       </button>
       <button class="category-card category-hoodies" data-category-jump="2">
         <span>Hoodies</span><small>Soft everyday layers</small>
       </button>
-      <button class="category-card category-accessories" data-category-jump="3">
-        <span>Accessories</span><small>Finish the look</small>
+      <button class="category-card category-caps" data-category-jump="3">
+        <span>Caps</span><small>Simple finishing pieces</small>
+      </button>
+      <button class="category-card category-shoes" data-category-jump="6">
+        <span>Shoes</span><small>Street-ready everyday pairs</small>
       </button>
     </section>
 
@@ -103,9 +110,12 @@
       <div class="catalogue-toolbar">
         <div class="filter-tabs" id="category-filters" aria-label="Filter by category">
           <button class="active" data-category="all">All</button>
-          <button data-category="1">Tees</button>
+          <button data-category="1">T-Shirts</button>
+          <button data-category="4">Shirts</button>
+          <button data-category="5">Pants</button>
           <button data-category="2">Hoodies</button>
-          <button data-category="3">Accessories</button>
+          <button data-category="3">Caps</button>
+          <button data-category="6">Shoes</button>
         </div>
         <label class="sort-label">Sort
           <select id="sort-select">
@@ -136,10 +146,10 @@
     </section>
 
     <section class="benefits shell" id="benefits">
-      <article><span>01</span><h3>Live stock</h3><p>Every size and colour is read directly from the SQLite catalogue.</p></article>
+      <article><span>01</span><h3>Live stock</h3><p>Every size and colour is read directly from the connected product catalogue.</p></article>
       <article><span>02</span><h3>Google sign-in</h3><p>Use a verified Google account to securely return to your bag and order history.</p></article>
       <article><span>03</span><h3>Secure demo flow</h3><p>No real payment details are requested or stored in this assessment project.</p></article>
-      <article><span>04</span><h3>Order tracking</h3><p>Placed orders are recorded with totals, items and a clear confirmation status.</p></article>
+      <article><span>04</span><h3>Persistent orders</h3><p>Customer orders, payments and tracking updates remain available to the administrator.</p></article>
     </section>
 
     <section class="newsletter">
@@ -158,7 +168,7 @@
   <footer class="site-footer">
     <div class="shell footer-grid">
       <div><a class="brand brand-footer" href="#top"><span class="brand-mark">PC</span><span>POP CULTURE</span></a><p>Original clothing for collectors, players and everyday fans.</p></div>
-      <div><h3>Shop</h3><a href="#products">New in</a><a href="#products">Graphic tees</a><a href="#products">Hoodies</a><a href="#products">Accessories</a></div>
+      <div><h3>Shop</h3><a href="#products">T-Shirts</a><a href="#products">Shirts & pants</a><a href="#products">Hoodies</a><a href="#products">Caps & shoes</a></div>
       <div><h3>Help</h3><a href="/help.html#delivery">Delivery</a><a href="/help.html#returns">Returns</a><a href="/help.html#sizing">Size guide</a><a href="/contact.html">Contact us</a><button id="footer-track" type="button">Track an order</button><button id="footer-orders" type="button">My orders</button></div>
       <div><h3>Project</h3><a href="/login.html">Customer sign in</a><a href="/login.html?type=admin">Admin portal</a><a href="/api" target="_blank" rel="noreferrer">API overview</a><a href="/api/health" target="_blank" rel="noreferrer">System status</a><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a><p>Capstone B · Sprint 3</p></div>
     </div>

@@ -4,14 +4,34 @@ const images = {
   'HOOD-MOON-001': 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=900&q=86',
   'HOOD-PIXEL-002': 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=900&q=86',
   'CAP-STAR-001': 'https://images.unsplash.com/photo-1521369909029-2afed882baee?auto=format&fit=crop&w=900&q=86',
-  'TOTE-COMIC-002': 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=900&q=86'
+  'TOTE-COMIC-002': 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=900&q=86',
+  'SHIRT-CAMP-001': 'https://images.unsplash.com/photo-1603252109303-2751441dd157?auto=format&fit=crop&w=900&q=86',
+  'SHIRT-OXFORD-002': 'https://images.unsplash.com/photo-1598032895397-b9472444bf93?auto=format&fit=crop&w=900&q=86',
+  'PANT-CARGO-001': 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?auto=format&fit=crop&w=900&q=86',
+  'PANT-WIDE-002': 'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=900&q=86',
+  'SHOE-RUNNER-001': 'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?auto=format&fit=crop&w=900&q=86',
+  'SHOE-COURT-002': 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=900&q=86',
+  'CAP-LOGO-002': 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?auto=format&fit=crop&w=900&q=86',
+  'TEE-CORE-003': 'https://images.unsplash.com/photo-1583743814966-8936f37f4678?auto=format&fit=crop&w=900&q=86',
+  'TEE-OVERSIZED-004': 'https://images.unsplash.com/photo-1503341504253-dff4815485f1?auto=format&fit=crop&w=900&q=86',
+  'HOOD-ZIP-003': 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?auto=format&fit=crop&w=900&q=86',
+  'BAG-CROSSBODY-003': 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=900&q=86',
+  'SHIRT-OVERSHIRT-003': 'https://images.unsplash.com/photo-1603252110481-7ba873bf42ab?auto=format&fit=crop&w=900&q=86',
+  'PANT-CHINO-003': 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&w=900&q=86',
+  'SHOE-HIGHTOP-003': 'https://images.unsplash.com/photo-1495555961986-6d4c1ecb7be3?auto=format&fit=crop&w=900&q=86'
 };
 
 const badges = {
   'TEE-SPACE-001': 'Bestseller',
   'TEE-ARCADE-002': 'New',
   'HOOD-MOON-001': 'Trending',
-  'CAP-STAR-001': 'Limited'
+  'CAP-STAR-001': 'Limited',
+  'SHIRT-CAMP-001': 'New',
+  'PANT-CARGO-001': 'Trending',
+  'SHOE-RUNNER-001': 'Bestseller',
+  'TEE-OVERSIZED-004': 'New',
+  'BAG-CROSSBODY-003': 'New',
+  'SHOE-HIGHTOP-003': 'New'
 };
 
 const state = {

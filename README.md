@@ -5,9 +5,9 @@
 [![Live on Vercel](https://img.shields.io/badge/Vercel-Live-000000?logo=vercel)](https://pop-culture-clothing-capstone.vercel.app)
 
 Full-stack clothing storefront for the Pop Culture Clothing capstone. The project
-uses accessible HTML, responsive CSS and browser JavaScript with an Express 5 API
-and SQLite through Node's built-in `node:sqlite` module. No separate database
-service is needed.
+uses accessible HTML, responsive CSS and browser JavaScript with an Express 5 API,
+SQLite through Node's built-in `node:sqlite` module and Upstash Redis for durable
+hosted customer orders.
 
 ## Live deployment
 
@@ -17,11 +17,12 @@ service is needed.
 
 The repository is configured for Vercel's Node.js runtime. Vercel serves the
 responsive pages from `public/` and runs the exported Express application for the
-API. The hosted assessment demonstration initialises a seeded SQLite database in
-the function's temporary storage. Catalogue browsing, customer sign-in, checkout,
-tracking and the administrator workflow are available, but hosted changes may reset
-after a serverless restart. Local and Codespaces runs keep their SQLite data in
-`data/retail.db`.
+API. The hosted assessment demonstration initialises the catalogue in SQLite and
+stores completed orders, payment references and tracking history in shared Upstash
+storage. Customer orders therefore remain visible in both order history and the
+administrator portal across serverless restarts. Local and Codespaces runs keep
+their SQLite data in `data/retail.db` and use Upstash when its environment values
+are available.
 
 Production customer access uses Google Identity Services. Google verifies the
 account and the backend validates the signed ID token before creating or returning
@@ -62,12 +63,12 @@ http://127.0.0.1:3000/admin.html.
 
 | Requirement | Implementation |
 |---|---|
-| Product catalogue | Searchable products, categories, prices, images and live variant stock |
+| Product catalogue | Twenty products across T-Shirts, Shirts, Pants, Hoodies, Caps/Bags and Shoes |
 | Customer access | Optional verified Google sign-in, guest checkout and an email-only local fallback |
 | Shopping cart | Local cart for guests and a persistent SQLite cart after sign-in |
 | Checkout | Guest-friendly validated delivery details, confirmation screen, server totals and transactional stock reduction |
 | Payments | Safe fictional payment record with status, amount and unique reference; no card data |
-| Orders | Real checkout history, two fictional sample orders, item details and administrator fulfilment controls |
+| Orders | Durable hosted checkout history, two fictional sample orders, item details and administrator fulfilment controls |
 | Tracking | Email-verified timeline with status history and payment confirmation |
 | Administration | Dashboard, product CRUD, variant CRUD, stock, orders, customers, payments and support |
 | Customer information | About, Contact, Delivery, Returns and Sizing pages |
@@ -77,8 +78,10 @@ The database file is `data/retail.db` (created by `db:init`, excluded from Git).
 The SQL scripts and lockfile allow another developer to recreate the environment.
 Run `npm run db:inspect` to inspect sample rows and database integrity.
 
-`HOST`, `PORT`, `DATABASE_PATH`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` and
-`ADMIN_SESSION_SECRET` may be set as environment variables.
+`HOST`, `PORT`, `DATABASE_PATH`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`,
+`ADMIN_SESSION_SECRET`, `KV_REST_API_URL` and `KV_REST_API_TOKEN` may be set as
+environment variables. The two `KV_` values are provisioned automatically by the
+Vercel Upstash integration.
 `.env.example` documents defaults; `.env` files are not automatically loaded.
 
 For local assessment demonstration, the administrator login is
@@ -101,8 +104,8 @@ when `GOOGLE_CLIENT_ID` is not set.
 | `GET /terms.html` | Demonstration storefront terms of use |
 | `GET /api` | API overview |
 | `/api/health` | Server and database health |
-| `/api/categories` | Three categories |
-| `/api/products` | Six products with category and total variant stock |
+| `/api/categories` | Six clothing departments |
+| `/api/products` | Twenty products, ordered by department, with total variant stock |
 | `/api/products?category=2&q=hoodie` | Optional category ID and name filters |
 | `/api/products/1` | One product; 404 if absent |
 | `/api/products/1/variants` | Size, colour and stock for one product |
@@ -156,6 +159,7 @@ the customer receives a sign-in notification email and a professional receipt af
 placing an order. Email failure never prevents sign-in or checkout. Without Google
 configuration, local development retains the email-only assessment demonstration. No passwords or
 real payment details are collected.
-Orders, order items, tracking history and stock updates are stored in SQLite for functional testing.
+Orders, payment references and tracking history use shared Upstash storage in the
+hosted deployment; SQLite remains the local functional-test and catalogue database.
 The admin session is separate, password-protected and held in server memory; use a
 managed identity provider and persistent secure sessions before production use.

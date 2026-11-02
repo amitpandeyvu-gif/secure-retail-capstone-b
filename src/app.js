@@ -3,6 +3,15 @@ import { resolve } from 'node:path';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { projectRoot } from './database.js';
+import {
+  getPersistentOrder,
+  listPersistentOrders,
+  listPersistentOrdersByEmail,
+  nextPersistentOrderId,
+  persistentOrdersEnabled,
+  savePersistentOrder,
+  updatePersistentOrderStatus
+} from './order-store.js';
 
 const googleKeys = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
 
@@ -172,6 +181,21 @@ export function createApp(db) {
   const adminSessionSecret = process.env.ADMIN_SESSION_SECRET || `local-${adminPassword}`;
   const customerSessionSecret = process.env.CUSTOMER_SESSION_SECRET || adminSessionSecret;
   const googleClientId = process.env.GOOGLE_CLIENT_ID || '';
+
+  function localAdminOrders() {
+    return db.prepare(`SELECT o.*, u.name AS customer_name, u.email FROM orders o
+      JOIN users u ON u.id = o.user_id ORDER BY o.id DESC`).all();
+  }
+
+  async function combinedAdminOrders() {
+    const local = localAdminOrders();
+    if (!persistentOrdersEnabled()) return local;
+    const persistent = await listPersistentOrders();
+    const merged = new Map(local.map(order => [Number(order.id), order]));
+    persistent.forEach(order => merged.set(Number(order.id), order));
+    return [...merged.values()].sort((a, b) => Number(b.id) - Number(a.id));
+  }
+
   app.disable('x-powered-by');
   app.use(express.json({ limit: '32kb' }));
   app.use((_req, res, next) => {
@@ -225,7 +249,7 @@ export function createApp(db) {
     const args = [];
     if (category !== undefined) { where.push('p.category_id = ?'); args.push(Number(category)); }
     if (q) { where.push('instr(lower(p.name), lower(?)) > 0'); args.push(q); }
-    const sql = productSelect + (where.length ? ' WHERE ' + where.join(' AND ') : '') + ' ORDER BY p.id';
+    const sql = productSelect + (where.length ? ' WHERE ' + where.join(' AND ') : '') + ' ORDER BY p.category_id, p.id';
     const data = db.prepare(sql).all(...args);
     res.json({ currency: 'AUD', count: data.length, data });
   });
@@ -363,20 +387,27 @@ export function createApp(db) {
     res.json({ message: 'Signed out' });
   });
 
-  app.get('/api/admin/dashboard', requireAdmin, (_req, res) => {
-    const summary = db.prepare(`SELECT
-      (SELECT COUNT(*) FROM products) AS products,
-      (SELECT COUNT(*) FROM users) AS customers,
-      (SELECT COUNT(*) FROM orders) AS orders,
-      (SELECT COALESCE(SUM(total_cents),0) FROM orders WHERE status != 'Cancelled') AS revenue_cents,
-      (SELECT COUNT(*) FROM variants WHERE stock <= 5) AS low_stock`).get();
-    const recentOrders = db.prepare(`SELECT o.id, o.status, o.total_cents, o.created_at,
-      u.name AS customer_name, u.email FROM orders o JOIN users u ON u.id = o.user_id
-      ORDER BY o.id DESC LIMIT 6`).all();
+  app.get('/api/admin/dashboard', requireAdmin, async (_req, res, next) => {
+    try {
+      const orders = await combinedAdminOrders();
+      const baseSummary = db.prepare(`SELECT
+        (SELECT COUNT(*) FROM products) AS products,
+        (SELECT COUNT(*) FROM users) AS customers,
+        (SELECT COUNT(*) FROM variants WHERE stock <= 5) AS low_stock`).get();
+      const customerEmails = new Set(db.prepare('SELECT email FROM users').all().map(user => user.email));
+      orders.forEach(order => customerEmails.add(order.email));
+      const summary = {
+        ...baseSummary,
+        customers: customerEmails.size,
+        orders: orders.length,
+        revenue_cents: orders.filter(order => order.status !== 'Cancelled').reduce((sum, order) => sum + Number(order.total_cents), 0)
+      };
+      const recentOrders = orders.slice(0, 6);
     const lowStock = db.prepare(`SELECT v.id AS variant_id, p.id AS product_id, p.name, p.sku,
       v.size, v.colour, v.stock FROM variants v JOIN products p ON p.id = v.product_id
       WHERE v.stock <= 5 ORDER BY v.stock, p.name LIMIT 8`).all();
-    res.json({ summary, recent_orders: recentOrders, low_stock: lowStock });
+      res.json({ summary, recent_orders: recentOrders, low_stock: lowStock, persistent_orders: persistentOrdersEnabled() });
+    } catch (error) { next(error); }
   });
 
   app.get('/api/admin/products', requireAdmin, (_req, res) => {
@@ -493,45 +524,74 @@ export function createApp(db) {
     }
   });
 
-  app.get('/api/admin/orders', requireAdmin, (_req, res) => {
-    const orders = db.prepare(`SELECT o.*, u.name AS customer_name, u.email FROM orders o
-      JOIN users u ON u.id = o.user_id ORDER BY o.id DESC`).all();
-    res.json({ data: orders });
+  app.get('/api/admin/orders', requireAdmin, async (_req, res, next) => {
+    try { res.json({ data: await combinedAdminOrders(), persistent: persistentOrdersEnabled() }); }
+    catch (error) { next(error); }
   });
 
-  app.patch('/api/admin/orders/:id', requireAdmin, (req, res) => {
+  app.patch('/api/admin/orders/:id', requireAdmin, async (req, res, next) => {
     if (!positiveInteger(req.params.id)) return res.status(400).json({ error: 'id must be a positive integer' });
     const statuses = ['Confirmed', 'Packed', 'Shipped', 'Delivered', 'Cancelled'];
     if (!statuses.includes(req.body?.status)) return res.status(400).json({ error: 'Choose a valid order status' });
     const orderId = Number(req.params.id);
-    const order = db.prepare('SELECT status FROM orders WHERE id = ?').get(orderId);
+    const localOrder = db.prepare('SELECT status FROM orders WHERE id = ?').get(orderId);
+    let persistentOrder;
+    try { persistentOrder = persistentOrdersEnabled() ? await getPersistentOrder(orderId) : null; }
+    catch (error) { return next(error); }
+    const order = persistentOrder || localOrder;
     if (!order) return res.status(404).json({ error: 'Order not found' });
     if (order.status === req.body.status) return res.json({ message: 'Order status is already current' });
-    db.exec('BEGIN IMMEDIATE');
     try {
-      db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(req.body.status, orderId);
-      db.prepare('INSERT INTO order_status_history(order_id,status,note) VALUES (?,?,?)')
-        .run(orderId, req.body.status, `Order marked ${req.body.status.toLowerCase()}`);
-      db.exec('COMMIT');
+      const note = `Order marked ${req.body.status.toLowerCase()}`;
+      const createdAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      if (persistentOrder) await updatePersistentOrderStatus(orderId, req.body.status, note, createdAt);
+      if (localOrder) {
+        db.exec('BEGIN IMMEDIATE');
+        db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(req.body.status, orderId);
+        db.prepare('INSERT INTO order_status_history(order_id,status,note,created_at) VALUES (?,?,?,?)')
+          .run(orderId, req.body.status, note, createdAt);
+        db.exec('COMMIT');
+      }
       res.json({ message: 'Order status updated' });
     } catch (error) {
       try { db.exec('ROLLBACK'); } catch {}
-      throw error;
+      next(error);
     }
   });
 
-  app.get('/api/admin/customers', requireAdmin, (_req, res) => {
-    const customers = db.prepare(`SELECT u.id, u.name, u.email, u.created_at, COUNT(o.id) AS order_count,
-      COALESCE(SUM(CASE WHEN o.status != 'Cancelled' THEN o.total_cents ELSE 0 END),0) AS spent_cents
-      FROM users u LEFT JOIN orders o ON o.user_id = u.id GROUP BY u.id ORDER BY u.id DESC`).all();
-    res.json({ data: customers });
+  app.get('/api/admin/customers', requireAdmin, async (_req, res, next) => {
+    try {
+      const customers = db.prepare('SELECT id, name, email, created_at FROM users ORDER BY id DESC').all();
+      const records = new Map(customers.map(customer => [customer.email, { ...customer, order_count: 0, spent_cents: 0 }]));
+      for (const order of await combinedAdminOrders()) {
+        const customer = records.get(order.email) || { id: `persistent-${order.email}`, name: order.customer_name, email: order.email, created_at: order.created_at, order_count: 0, spent_cents: 0 };
+        customer.order_count = Number(customer.order_count) + 1;
+        if (order.status !== 'Cancelled') customer.spent_cents = Number(customer.spent_cents) + Number(order.total_cents);
+        records.set(order.email, customer);
+      }
+      res.json({ data: [...records.values()] });
+    } catch (error) { next(error); }
   });
 
-  app.get('/api/admin/payments', requireAdmin, (_req, res) => {
+  app.get('/api/admin/payments', requireAdmin, async (_req, res, next) => {
     const payments = db.prepare(`SELECT p.id, p.order_id, p.status, p.transaction_ref, p.amount_cents, p.created_at,
       u.name AS customer_name, u.email FROM payments p JOIN orders o ON o.id = p.order_id
       JOIN users u ON u.id = o.user_id ORDER BY p.id DESC`).all();
-    res.json({ data: payments });
+    try {
+      const persistent = (await listPersistentOrders()).map(order => ({
+        id: order.id,
+        order_id: order.id,
+        status: order.payment_status,
+        transaction_ref: order.transaction_ref,
+        amount_cents: order.total_cents,
+        created_at: order.created_at,
+        customer_name: order.customer_name,
+        email: order.email
+      }));
+      const merged = new Map(payments.map(payment => [Number(payment.order_id), payment]));
+      persistent.forEach(payment => merged.set(Number(payment.order_id), payment));
+      res.json({ data: [...merged.values()].sort((a, b) => Number(b.order_id) - Number(a.order_id)) });
+    } catch (error) { next(error); }
   });
 
   app.get('/api/admin/messages', requireAdmin, (_req, res) => {
@@ -546,7 +606,7 @@ export function createApp(db) {
     res.json({ message: 'Message status updated' });
   });
 
-  app.get('/api/orders', (req, res) => {
+  app.get('/api/orders', async (req, res, next) => {
     if (!validEmail(req.query.email)) return res.status(400).json({ error: 'A valid email is required' });
     const email = normaliseEmail(req.query.email);
     const orders = db.prepare(`SELECT o.id, o.status, o.subtotal_cents, o.shipping_cents,
@@ -557,16 +617,31 @@ export function createApp(db) {
       p.name, v.size, v.colour FROM order_items oi
       JOIN products p ON p.id = oi.product_id JOIN variants v ON v.id = oi.variant_id
       WHERE oi.order_id = ? ORDER BY oi.id`);
-    res.json({ data: orders.map(order => ({ ...order, items: itemQuery.all(order.id) })) });
+    try {
+      const local = orders.map(order => ({ ...order, items: itemQuery.all(order.id) }));
+      const persistent = await listPersistentOrdersByEmail(email);
+      const merged = new Map(local.map(order => [Number(order.id), order]));
+      persistent.forEach(order => merged.set(Number(order.id), order));
+      res.json({ data: [...merged.values()].sort((a, b) => Number(b.id) - Number(a.id)), persistent: persistentOrdersEnabled() });
+    } catch (error) { next(error); }
   });
 
-  app.get('/api/orders/:id/tracking', (req, res) => {
+  app.get('/api/orders/:id/tracking', async (req, res, next) => {
     if (!positiveInteger(req.params.id)) return res.status(400).json({ error: 'Enter a valid order number' });
     if (!validEmail(req.query.email)) return res.status(400).json({ error: 'Enter the email used for the order' });
+    const orderId = Number(req.params.id);
+    const email = normaliseEmail(req.query.email);
+    try {
+      const persistent = persistentOrdersEnabled() ? await getPersistentOrder(orderId) : null;
+      if (persistent && persistent.email === email) {
+        const tracking = buildTrackingDetails(persistent, persistent.history || []);
+        return res.json({ order: { ...persistent, history: tracking.checkpoints, tracking }, persistent: true });
+      }
+    } catch (error) { return next(error); }
     const order = db.prepare(`SELECT o.id, o.status, o.total_cents, o.shipping_name, o.address, o.city, o.postcode, o.created_at,
       p.status AS payment_status, p.transaction_ref FROM orders o JOIN users u ON u.id = o.user_id
       LEFT JOIN payments p ON p.order_id = o.id WHERE o.id = ? AND u.email = ?`)
-      .get(Number(req.params.id), normaliseEmail(req.query.email));
+      .get(orderId, email);
     if (!order) return res.status(404).json({ error: 'No order matches that number and email address' });
     const items = db.prepare(`SELECT oi.quantity, p.name, v.size, v.colour FROM order_items oi
       JOIN products p ON p.id = oi.product_id JOIN variants v ON v.id = oi.variant_id
@@ -595,6 +670,8 @@ export function createApp(db) {
     }
 
     try {
+      const persistentOrderId = persistentOrdersEnabled() ? await nextPersistentOrderId() : null;
+      const createdAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
       db.exec('BEGIN IMMEDIATE');
       const user = upsertUser(db, email, name);
       const variantQuery = db.prepare(`SELECT v.id, v.product_id, v.stock, v.size, v.colour, p.name, p.price_cents
@@ -607,10 +684,14 @@ export function createApp(db) {
       });
       const subtotal = selected.reduce((sum, item) => sum + item.price_cents * item.quantity, 0);
       const shipping = subtotal >= 8000 ? 0 : 995;
-      const orderResult = db.prepare(`INSERT INTO orders
-        (user_id, subtotal_cents, shipping_cents, total_cents, shipping_name, address, city, postcode)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(user.id, subtotal, shipping, subtotal + shipping, name, address, city, postcode);
-      const orderId = Number(orderResult.lastInsertRowid);
+      const orderResult = persistentOrderId
+        ? db.prepare(`INSERT INTO orders
+          (id, user_id, subtotal_cents, shipping_cents, total_cents, shipping_name, address, city, postcode, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(persistentOrderId, user.id, subtotal, shipping, subtotal + shipping, name, address, city, postcode, createdAt)
+        : db.prepare(`INSERT INTO orders
+          (user_id, subtotal_cents, shipping_cents, total_cents, shipping_name, address, city, postcode, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(user.id, subtotal, shipping, subtotal + shipping, name, address, city, postcode, createdAt);
+      const orderId = persistentOrderId || Number(orderResult.lastInsertRowid);
       const insertItem = db.prepare(`INSERT INTO order_items
         (order_id, product_id, variant_id, quantity, unit_price_cents) VALUES (?, ?, ?, ?, ?)`);
       const reduceStock = db.prepare('UPDATE variants SET stock = stock - ? WHERE id = ? AND stock >= ?');
@@ -620,13 +701,38 @@ export function createApp(db) {
         }
         insertItem.run(orderId, item.product_id, item.id, item.quantity, item.price_cents);
       }
-      db.prepare('INSERT INTO order_status_history(order_id,status,note) VALUES (?, ?, ?)')
-        .run(orderId, 'Confirmed', 'Order received and confirmed');
+      db.prepare('INSERT INTO order_status_history(order_id,status,note,created_at) VALUES (?, ?, ?, ?)')
+        .run(orderId, 'Confirmed', 'Order received and confirmed', createdAt);
       const transactionRef = `DEMO-${orderId}-${randomUUID().slice(0, 8).toUpperCase()}`;
-      db.prepare('INSERT INTO payments(order_id,status,transaction_ref,amount_cents) VALUES (?,?,?,?)')
-        .run(orderId, 'Succeeded', transactionRef, subtotal + shipping);
-      db.exec('COMMIT');
+      db.prepare('INSERT INTO payments(order_id,status,transaction_ref,amount_cents,created_at) VALUES (?,?,?,?,?)')
+        .run(orderId, 'Succeeded', transactionRef, subtotal + shipping, createdAt);
       const order = { id: orderId, status: 'Confirmed', subtotal_cents: subtotal, shipping_cents: shipping, total_cents: subtotal + shipping };
+      if (persistentOrderId) {
+        await savePersistentOrder({
+          ...order,
+          shipping_name: name,
+          customer_name: name,
+          email,
+          address,
+          city,
+          postcode,
+          created_at: createdAt,
+          updated_at: createdAt,
+          payment_status: 'Succeeded',
+          transaction_ref: transactionRef,
+          items: selected.map(item => ({
+            product_id: item.product_id,
+            variant_id: item.id,
+            quantity: item.quantity,
+            unit_price_cents: item.price_cents,
+            name: item.name,
+            size: item.size,
+            colour: item.colour
+          })),
+          history: [{ status: 'Confirmed', note: 'Order received and confirmed', created_at: createdAt }]
+        });
+      }
+      db.exec('COMMIT');
       let emailSent = false;
       try {
         emailSent = await sendOrderReceipt({ email, name, order, items: selected, address, city, postcode, transactionRef });
